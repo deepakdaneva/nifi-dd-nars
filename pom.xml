@@ -385,11 +385,17 @@
         <tukaani.xz.version>1.9</tukaani.xz.version>
         <zstd-jni.version>1.5.5-4</zstd-jni.version>
         <junit-jupiter.version>5.10.0</junit-jupiter.version>
-        <commons-compress.version>1.23.0</commons-compress.version>
+        <commons-compress.version>1.24.0</commons-compress.version>
         <commons-io.version>2.13.0</commons-io.version>
         <commons.archive.version>1.0.0</commons.archive.version>
         <slf4j.version>2.0.7</slf4j.version>
         <nifi.version>1.23.2</nifi.version>
+        <!-- TEMPORARY DEPENDENCIES: START -->
+        <temp.guava.version>32.0.1-jre</temp.guava.version>
+        <temp.protobuf.version>3.22.3</temp.protobuf.version>
+        <temp.quartz.version>2.3.2</temp.quartz.version>
+        <temp.jcommander.version>1.82</temp.jcommander.version>
+        <!-- TEMPORARY DEPENDENCIES: END -->
         <!-- MANIFEST.MF PROPERTIES -->
         <impl.spec.vendor>Deepak Kumar Jangir</impl.spec.vendor>
         <impl.spec.vendor.id>io.github.deepakdaneva</impl.spec.vendor.id>
@@ -504,6 +510,10 @@
                         <groupId>commons-logging</groupId>
                         <artifactId>commons-logging</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>xerces</groupId>
+                        <artifactId>xercesImpl</artifactId> <!-- TEMPORARY EXCLUSION UNTIL VULNERABILITY IS RESOLVED https://ossindex.sonatype.org/component/pkg:maven/xerces/xercesImpl@2.12.2-->
+                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
@@ -564,8 +574,29 @@
                 <artifactId>zstd-jni</artifactId>
                 <version>${zstd-jni.version}</version>
             </dependency>
-
-            <!-- TEST DEPENDENCIES -->
+            <!-- TEMPORARY DEPENDENCIES: START -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${temp.guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${temp.protobuf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.quartz-scheduler</groupId>
+                <artifactId>quartz</artifactId>
+                <version>${temp.quartz.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.beust</groupId>
+                <artifactId>jcommander</artifactId>
+                <version>${temp.jcommander.version}</version>
+            </dependency>
+            <!-- TEMPORARY DEPENDENCIES: END -->
+            <!-- TEST DEPENDENCIES: BELOW -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-simple</artifactId>
