@@ -1,0 +1,61 @@
+# Enforces the branching model and the Conventional Commits pull request title.
+# See CONTRIBUTING.md for the full workflow.
+name: PR policy
+
+on:
+  pull_request:
+    branches: [development, main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: PR policy
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check source and target branches
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          echo "Pull request: $HEAD_REF -> $BASE_REF"
+          case "$BASE_REF" in
+            main)
+              # Only integrated code (development), urgent hotfixes and release PRs reach main.
+              case "$HEAD_REF" in
+                development|hotfix/*|release-please--branches--main*) exit 0 ;;
+              esac
+              echo "::error::Pull requests into main must come from 'development', 'hotfix/*' or a release PR."
+              exit 1
+              ;;
+            development)
+              case "$HEAD_REF" in
+                feature/*|fix/*|bugfix/*|chore/*|docs/*|refactor/*|perf/*|test/*|build/*|ci/*|dependabot/*|release-sync/*) exit 0 ;;
+              esac
+              echo "::error::Branch '$HEAD_REF' does not follow the naming convention. Use feature/*, fix/*, bugfix/*, chore/*, docs/*, refactor/*, perf/*, test/*, build/* or ci/* (see CONTRIBUTING.md)."
+              exit 1
+              ;;
+          esac
+
+      - name: Check Conventional Commits title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        # Promotion PRs (development -> main) keep the individual commits, so their title is free-form.
+        if: github.head_ref != 'development'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            revert

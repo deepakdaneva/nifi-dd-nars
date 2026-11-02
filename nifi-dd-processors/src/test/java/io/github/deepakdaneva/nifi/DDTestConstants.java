@@ -15,11 +15,12 @@ package io.github.deepakdaneva.nifi;
 import java.nio.file.Path;
 
 /**
- * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * Locations of the test resources.
  */
-public class DDTestConstants {
+public final class DDTestConstants {
     public static final String TEST_FILES_DIR = "src/test/resources/testfiles";
     public static final Path TEST_FILES_PATH = Path.of(TEST_FILES_DIR);
+
+    private DDTestConstants() {
+    }
 }

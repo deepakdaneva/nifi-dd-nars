@@ -1,0 +1,28 @@
+# Weekly dependency updates, raised against development (the integration branch).
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    target-branch: development
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      maven-plugins:
+        patterns: ["org.apache.maven.plugins:*", "*-maven-plugin"]
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: development
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]

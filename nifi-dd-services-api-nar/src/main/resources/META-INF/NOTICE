@@ -1,8 +1,9 @@
-NOTICE
+nifi-dd-services-api-nar
+Copyright 2023-2026 Deepak Kumar Jangir
 
-This project includes many third-party components/libraries, please refer the dependencies.
-Refer to the respective websites and licenses for more details on the usage and licensing terms of these components/libraries.
+This product includes software developed by Deepak Kumar Jangir
+(https://deepakdaneva.github.io) and is licensed under the Apache License,
+Version 2.0 (see META-INF/LICENSE).
 
-Deepak Kumar Jangir
-[https://deepakdaneva.github.io](https://deepakdaneva.github.io)
-11th October 2023
+This NAR bundles the nifi-dd-services-api controller service interfaces and does not
+bundle any third-party components.

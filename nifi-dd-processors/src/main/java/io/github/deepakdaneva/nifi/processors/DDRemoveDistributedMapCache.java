@@ -14,7 +14,6 @@ package io.github.deepakdaneva.nifi.processors;
 
 import io.github.deepakdaneva.nifi.core.DDCoreAttributes;
 import io.github.deepakdaneva.nifi.exceptions.NoOrBlankCacheIdentifierException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
@@ -24,14 +23,10 @@ import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.distributed.cache.client.Serializer;
-import org.apache.nifi.distributed.cache.client.exception.SerializationException;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.logging.ComponentLog;
-import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
@@ -43,94 +38,90 @@ import java.util.List;
 import java.util.Set;
 
 /**
+ * Removes an entry from a map cache through a {@link DistributedMapCacheClient}.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
-@Tags({DDCoreAttributes.DEEPAKDANEVA, "map", "cache", "remove", "distributed"})
-@CapabilityDescription("Removes the provided key from the underlying DistributedMapCache.")
+@Tags({DDCoreAttributes.DEEPAKDANEVA, "map", "cache", "remove", "delete", "distributed"})
+@CapabilityDescription("Removes the entry identified by 'Cache Entry Identifier' from the map cache behind the configured DistributedMapCacheClient (for example MapCacheClientService, " + "or a Redis or Hazelcast map cache client). The cache key is serialized as UTF-8, the same way PutDistributedMapCache and FetchDistributedMapCache serialize it.")
 @WritesAttributes({@WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, description = DDCoreAttributes.DD_EXCEPTION_MESSAGE_DESC), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, description = DDCoreAttributes.DD_EXCEPTION_CLASS_DESC)})
-@SeeAlso(classNames = {"org.apache.nifi.distributed.cache.client.DistributedMapCacheClientService", "org.apache.nifi.distributed.cache.server.map.DistributedMapCacheServer", "org.apache.nifi.processors.standard.PutDistributedMapCache"})
-public class DDRemoveDistributedMapCache extends AbstractProcessor {
+@SeeAlso(classNames = {"org.apache.nifi.distributed.cache.client.MapCacheClientService", "org.apache.nifi.distributed.cache.server.map.MapCacheServer", "org.apache.nifi.processors.standard.PutDistributedMapCache", "org.apache.nifi.processors.standard.FetchDistributedMapCache"})
+public class DDRemoveDistributedMapCache extends AbstractDDProcessor {
 
-    public static final PropertyDescriptor DISTRIBUTED_CACHE_SERVICE = new PropertyDescriptor.Builder().name("Distributed Cache Service").description("The Controller Service that is used to remove the cached values.").required(true).identifiesControllerService(DistributedMapCacheClient.class).build();
+    /**
+     * Map cache client used to remove the entry.
+     */
+    public static final PropertyDescriptor DISTRIBUTED_CACHE_SERVICE = new PropertyDescriptor.Builder().name("Distributed Cache Service").description("The map cache client used to remove the cache entry.").required(true).identifiesControllerService(DistributedMapCacheClient.class).build();
 
-    public static final PropertyDescriptor CACHE_ENTRY_IDENTIFIER = new PropertyDescriptor.Builder().name("Cache Entry Identifier").description("A cache identifier which needs to be removed from the cache.").required(true).addValidator(StandardValidators.NON_BLANK_VALIDATOR).addValidator(StandardValidators.NON_EMPTY_EL_VALIDATOR).addValidator(StandardValidators.ATTRIBUTE_EXPRESSION_LANGUAGE_VALIDATOR).defaultValue("").expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES).build();
+    /**
+     * Key of the entry to remove.
+     */
+    public static final PropertyDescriptor CACHE_ENTRY_IDENTIFIER = new PropertyDescriptor.Builder().name("Cache Entry Identifier").description("Key of the cache entry to remove. Supports Expression Language with FlowFile attributes; a blank result routes the FlowFile to 'failure'.").required(true).addValidator(StandardValidators.NON_BLANK_VALIDATOR).expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES).build();
 
-    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("If the cache is successfully removed FlowFile will will be routed to this relationship.").build();
-    public static final Relationship REL_NOT_FOUND = new Relationship.Builder().name("not-found").description("If the cache is not found in the cache service with the provided identifier, FlowFile will be routed to this relationship.").build();
-    public static final Relationship REL_FAILURE = new Relationship.Builder().name("failure").description("If unable to communicate with the cache service or if the cache entry is evaluated to be blank, the FlowFile will be penalized and routed to this relationship.").build();
-    private final Serializer<String> keySerializer;
-    private Set<Relationship> relationships;
-    private List<PropertyDescriptor> properties;
+    /**
+     * Relationship for removed entries.
+     */
+    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("The cache entry was removed.").build();
+    /**
+     * Relationship for keys not present in the cache.
+     */
+    public static final Relationship REL_NOT_FOUND = new Relationship.Builder().name("not-found").description("No cache entry exists for the evaluated identifier.").build();
+    /**
+     * Relationship for failures.
+     */
+    public static final Relationship REL_FAILURE = new Relationship.Builder().name("failure").description("The cache service could not be reached or the identifier evaluated to a blank value. The FlowFile is penalized.").build();
 
-    public DDRemoveDistributedMapCache() {
-        keySerializer = new StringSerializer();
-    }
-
-    @Override
-    protected void init(ProcessorInitializationContext context) {
-        properties = List.of(CACHE_ENTRY_IDENTIFIER, DISTRIBUTED_CACHE_SERVICE);
-        relationships = Set.of(REL_SUCCESS, REL_NOT_FOUND, REL_FAILURE);
-    }
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(CACHE_ENTRY_IDENTIFIER, DISTRIBUTED_CACHE_SERVICE);
+    private static final Set<Relationship> RELATIONSHIPS = Set.of(REL_SUCCESS, REL_NOT_FOUND, REL_FAILURE);
+    private static final Serializer<String> KEY_SERIALIZER = new StringSerializer();
 
     @Override
     public Set<Relationship> getRelationships() {
-        return relationships;
+        return RELATIONSHIPS;
     }
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return properties;
+        return PROPERTY_DESCRIPTORS;
     }
 
     @Override
-    public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
+    public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
         FlowFile flowFile = session.get();
         if (flowFile == null) {
             return;
         }
 
-        final ComponentLog log = getLogger();
         final String cacheKey = context.getProperty(CACHE_ENTRY_IDENTIFIER).evaluateAttributeExpressions(flowFile).getValue();
-        if (!StringUtils.isBlank(cacheKey)) {
-            DistributedMapCacheClient cache;
-            try {
-                cache = context.getProperty(DISTRIBUTED_CACHE_SERVICE).asControllerService(DistributedMapCacheClient.class);
-                if (cache.remove(cacheKey, keySerializer)) {
-                    session.transfer(flowFile, REL_SUCCESS);
-                } else {
-                    session.transfer(flowFile, REL_NOT_FOUND);
-                }
-            } catch (Exception e) {
-                log.error("Unable to remove the cache '" + cacheKey + "'", e);
-                flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, e.getMessage());
-                flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, e.getClass().getName());
-                flowFile = session.penalize(flowFile);
-                session.getProvenanceReporter().modifyAttributes(flowFile);
-                session.transfer(flowFile, REL_FAILURE);
-            }
-        } else {
-            try {
-                throw new NoOrBlankCacheIdentifierException("Empty/Blank/No cache identifier provided");
-            } catch (Exception e) {
-                log.error("Unable to remove the cache", e);
-                flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, e.getMessage());
-                flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, e.getClass().getName());
-                flowFile = session.penalize(flowFile);
-                session.getProvenanceReporter().modifyAttributes(flowFile);
-                session.transfer(flowFile, REL_FAILURE);
-            }
+        if (cacheKey == null || cacheKey.isBlank()) {
+            fail(session, flowFile, new NoOrBlankCacheIdentifierException("Empty/Blank/No cache identifier provided"));
+            return;
         }
+
+        final DistributedMapCacheClient cache = context.getProperty(DISTRIBUTED_CACHE_SERVICE).asControllerService(DistributedMapCacheClient.class);
+        final boolean removed;
+        try {
+            removed = cache.remove(cacheKey, KEY_SERIALIZER);
+        } catch (final IOException | RuntimeException e) {
+            fail(session, flowFile, e);
+            return;
+        }
+        session.transfer(flowFile, removed ? REL_SUCCESS : REL_NOT_FOUND);
+    }
+
+    private void fail(final ProcessSession session, final FlowFile flowFile, final Exception e) {
+        getLogger().error("Failed to remove cache entry for {}", flowFile, e);
+        transfer(session, session.penalize(flowFile), REL_FAILURE, e);
     }
 
     /**
-     * Simple string serializer, used for serializing the cache key
+     * Serializes cache keys as UTF-8 bytes.
      */
     public static class StringSerializer implements Serializer<String> {
         @Override
-        public void serialize(final String value, final OutputStream out) throws SerializationException, IOException {
+        public void serialize(final String value, final OutputStream out) throws IOException {
             out.write(value.getBytes(StandardCharsets.UTF_8));
         }
     }

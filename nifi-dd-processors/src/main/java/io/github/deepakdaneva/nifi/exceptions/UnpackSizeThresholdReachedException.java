@@ -13,11 +13,20 @@
 package io.github.deepakdaneva.nifi.exceptions;
 
 /**
+ * Raised when an archive holds more data than the configured unpack size threshold.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 public class UnpackSizeThresholdReachedException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Creates the exception.
+     *
+     * @param message description of the problem.
+     */
     public UnpackSizeThresholdReachedException(String message) {
         super(message);
     }

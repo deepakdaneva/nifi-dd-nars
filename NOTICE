@@ -1,9 +1,24 @@
-NOTICE
+nifi-dd-nars
+Copyright 2023-2026 Deepak Kumar Jangir
 
-This project incorporates various third-party components and libraries.
-Please consult the respective websites and licenses of the dependencies that have been included
-in this project for comprehensive information on their usage and licensing terms.
+This product includes software developed by Deepak Kumar Jangir
+(https://deepakdaneva.github.io), licensed under the Apache License,
+Version 2.0 (see LICENSE).
 
-Deepak Kumar Jangir
-[https://deepakdaneva.github.io](https://deepakdaneva.github.io)
-11th October 2023
+This product includes software developed at
+The Apache Software Foundation (https://www.apache.org/).
+
+Apache NiFi
+Copyright 2014-2023 The Apache Software Foundation
+
+Portions of DDIdentifyMimeType and DDUnpackContent are adapted from Apache NiFi's
+org.apache.nifi.processors.standard.IdentifyMimeType and
+org.apache.nifi.processors.standard.UnpackContent, licensed under the Apache
+License, Version 2.0.
+
+The binary NAR built from this repository (nifi-dd-processors-nar) bundles
+third-party components, including software developed at The Apache Software
+Foundation (https://www.apache.org/). Their notices and licenses are listed in
+nifi-dd-processors-nar/src/main/resources/META-INF/NOTICE and
+nifi-dd-processors-nar/src/main/resources/META-INF/LICENSE, which are packaged
+in the NAR under META-INF/.

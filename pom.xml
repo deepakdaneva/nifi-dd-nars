@@ -2,471 +2,206 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.apache.nifi</groupId>
-        <artifactId>nifi-nar-bundles</artifactId>
-        <version>1.23.2</version>
-    </parent>
     <groupId>io.github.deepakdaneva.nifi</groupId>
     <artifactId>nifi-dd-nars</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
-    <description>Extended Apache NiFi processors, controller services and other components.</description>
+    <description>Extended Apache NiFi processors and other components.</description>
     <url>https://github.com/deepakdaneva/nifi-dd-nars</url>
+    <inceptionYear>2023</inceptionYear>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
             <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
+    <developers>
+        <developer>
+            <id>deepakdaneva</id>
+            <name>Deepak Kumar Jangir</name>
+            <url>https://deepakdaneva.github.io</url>
+            <roles>
+                <role>Senior Software Engineer</role>
+            </roles>
+            <timezone>GMT+5:30</timezone>
+        </developer>
+    </developers>
     <scm>
-        <connection>scm:git:git://github.com/deepakdaneva/nifi-dd-nars.git</connection>
-        <developerConnection>scm:git:ssh://github.com/deepakdaneva/nifi-dd-nars.git</developerConnection>
-        <url>https://github.com/deepakdaneva/nifi-dd-nars/tree/main</url>
+        <connection>scm:git:https://github.com/deepakdaneva/nifi-dd-nars.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/deepakdaneva/nifi-dd-nars.git</developerConnection>
+        <url>https://github.com/deepakdaneva/nifi-dd-nars</url>
+        <tag>HEAD</tag>
     </scm>
-    <distributionManagement>
-        <snapshotRepository>
-            <id>snapshot</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>release</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
-    <profiles>
-        <profile>
-            <id>dev</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <release.type>development</release.type>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-jar-plugin</artifactId>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.nifi</groupId>
-                        <artifactId>nifi-nar-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                        <version>${maven.spotless.plugin.version}</version>
-                        <configuration>
-                            <!-- define a language-specific format -->
-                            <java>
-                                <eclipse>
-                                    <file>${project.basedir}/eclipse-formatter.xml</file>
-                                </eclipse>
-                                <licenseHeader>
-                                    <file>${project.basedir}/license-header</file>
-                                </licenseHeader>
-                            </java>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>apply</goal>
-                                </goals>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>snapshot</id>
-            <properties>
-                <release.type>snapshot</release.type>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>snapshot</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org</nexusUrl>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-jar-plugin</artifactId>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>test-jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.nifi</groupId>
-                        <artifactId>nifi-nar-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                        <version>${maven.spotless.plugin.version}</version>
-                        <configuration>
-                            <!-- define a language-specific format -->
-                            <java>
-                                <eclipse>
-                                    <file>${project.basedir}/eclipse-formatter.xml</file>
-                                </eclipse>
-                                <licenseHeader>
-                                    <file>${project.basedir}/license-header</file>
-                                </licenseHeader>
-                            </java>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>apply</goal>
-                                </goals>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>create-sources-jar</id>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <configuration>
-                            <quiet>true</quiet>
-                            <additionalOptions>-Xdoclint:none</additionalOptions>
-                            <source>${maven.compiler.source}</source>
-                            <detectOfflineLinks>false</detectOfflineLinks>
-                            <notimestamp>true</notimestamp>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>create-javadocs-jar</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>release</id>
-            <properties>
-                <release.type>release</release.type>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>snapshot</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org</nexusUrl>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-jar-plugin</artifactId>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>test-jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.nifi</groupId>
-                        <artifactId>nifi-nar-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <archive>
-                                <manifestEntries>
-                                    <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
-                                    <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
-                                    <Implementation-Version>${impl.spec.version}</Implementation-Version>
-                                    <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
-                                    <Specification-Version>${impl.spec.version}</Specification-Version>
-                                    <Release-Type>${release.type}</Release-Type>
-                                </manifestEntries>
-                            </archive>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                        <version>${maven.spotless.plugin.version}</version>
-                        <configuration>
-                            <!-- define a language-specific format -->
-                            <java>
-                                <eclipse>
-                                    <file>${project.basedir}/eclipse-formatter.xml</file>
-                                </eclipse>
-                                <licenseHeader>
-                                    <file>${project.basedir}/license-header</file>
-                                </licenseHeader>
-                            </java>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>apply</goal>
-                                </goals>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>create-sources-jar</id>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <configuration>
-                            <quiet>true</quiet>
-                            <additionalOptions>-Xdoclint:none</additionalOptions>
-                            <source>${maven.compiler.source}</source>
-                            <detectOfflineLinks>false</detectOfflineLinks>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>create-javadocs-jar</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-    <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven.compiler.release>11</maven.compiler.release>
-        <maven.source.plugin.version>3.3.0</maven.source.plugin.version>
-        <maven.javadoc.plugin.version>3.5.0</maven.javadoc.plugin.version>
-        <maven.gpg.plugin.version>3.1.0</maven.gpg.plugin.version>
-        <maven.deploy.plugin.version>3.1.1</maven.deploy.plugin.version>
-        <maven.jar.plugin.version>3.3.0</maven.jar.plugin.version>
-        <maven.nar.plugin.version>1.5.1</maven.nar.plugin.version>
-        <maven.nexus.staging.plugin.version>1.6.13</maven.nexus.staging.plugin.version>
-        <maven.spotless.plugin.version>2.35.0</maven.spotless.plugin.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- TIKA RELATED STARTS -->
-        <tika.version>2.9.0</tika.version>
-        <jai-imageio.version>1.4.0</jai-imageio.version>
-        <imageio-jpeg.version>3.9.4</imageio-jpeg.version>
-        <!-- TIKA RELATED ENDS -->
-        <jackson.version>2.15.2</jackson.version>
-        <jayway.version>2.8.0</jayway.version>
-        <brotli.version>0.1.2</brotli.version>
-        <tukaani.xz.version>1.9</tukaani.xz.version>
-        <zstd-jni.version>1.5.5-4</zstd-jni.version>
-        <junit-jupiter.version>5.10.0</junit-jupiter.version>
-        <commons-compress.version>1.24.0</commons-compress.version>
-        <commons-io.version>2.13.0</commons-io.version>
-        <commons.archive.version>1.0.0</commons.archive.version>
-        <slf4j.version>2.0.7</slf4j.version>
-        <nifi.version>1.23.2</nifi.version>
-        <!-- TEMPORARY DEPENDENCIES: START -->
-        <temp.guava.version>32.0.1-jre</temp.guava.version>
-        <temp.protobuf.version>3.22.3</temp.protobuf.version>
-        <temp.quartz.version>2.3.2</temp.quartz.version>
-        <temp.jcommander.version>1.82</temp.jcommander.version>
-        <!-- TEMPORARY DEPENDENCIES: END -->
-        <!-- MANIFEST.MF PROPERTIES -->
-        <impl.spec.vendor>Deepak Kumar Jangir</impl.spec.vendor>
-        <impl.spec.vendor.id>io.github.deepakdaneva</impl.spec.vendor.id>
-        <impl.spec.version>${project.version}</impl.spec.version>
-        <release.type>development</release.type>
-    </properties>
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/deepakdaneva/nifi-dd-nars/issues</url>
+    </issueManagement>
+    <ciManagement>
+        <system>GitHub Actions</system>
+        <url>https://github.com/deepakdaneva/nifi-dd-nars/actions</url>
+    </ciManagement>
+
     <modules>
-        <module>nifi-dd-processors</module>
-        <module>nifi-dd-processors-nar</module>
         <module>nifi-dd-services-api</module>
         <module>nifi-dd-services-api-nar</module>
         <module>nifi-dd-services</module>
         <module>nifi-dd-services-nar</module>
+        <module>nifi-dd-processors</module>
+        <module>nifi-dd-processors-nar</module>
     </modules>
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>${maven.source.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${maven.javadoc.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>${maven.gpg.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <version>${maven.deploy.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <version>${maven.jar.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.nifi</groupId>
-                    <artifactId>nifi-nar-maven-plugin</artifactId>
-                    <version>${maven.nar.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>${maven.nexus.staging.plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>com.diffplug.spotless</groupId>
-                    <artifactId>spotless-maven-plugin</artifactId>
-                    <version>${maven.spotless.plugin.version}</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Apache NiFi: the runtime these extensions are built and tested against -->
+        <nifi.version>2.12.0</nifi.version>
+        <!-- nifi-api has its own release train; keep it aligned with the version shipped by ${nifi.version} -->
+        <nifi-api.version>2.12.0</nifi-api.version>
+
+        <!-- Libraries bundled in the NAR -->
+        <tika.version>3.3.3</tika.version>
+        <commons-archive.version>1.0.0</commons-archive.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
+        <commons-io.version>2.22.0</commons-io.version>
+        <commons-lang3.version>3.21.0</commons-lang3.version>
+        <jackson-bom.version>2.22.4</jackson-bom.version>
+        <brotli.version>0.1.2</brotli.version>
+        <xz.version>1.12</xz.version>
+        <zstd-jni.version>1.5.7-25</zstd-jni.version>
+        <jai-imageio.version>1.4.0</jai-imageio.version>
+        <twelvemonkeys.version>3.15.3</twelvemonkeys.version>
+
+        <!-- CVE overrides for old transitive dependencies of tika-parser-scientific-package
+             (edu.ucar cdm/grib/httpservices 4.5.5); see the dependencyManagement section -->
+        <cve.guava.version>33.7.2-jre</cve.guava.version>
+        <!-- grib 4.5.5 ships protobuf 2.5 generated classes; 4.x removed the GeneratedMessage API they use -->
+        <cve.protobuf.version>3.25.9</cve.protobuf.version>
+        <cve.quartz.version>2.5.2</cve.quartz.version>
+        <cve.jcommander.version>1.82</cve.jcommander.version>
+        <cve.httpclient.version>4.5.14</cve.httpclient.version>
+        <cve.httpcore.version>4.4.16</cve.httpcore.version>
+        <!-- poi 5.5.1 brings log4j-api 2.24.3 (CVE-2026-49844, fixed in 2.25.5 / 2.26.1) -->
+        <cve.log4j-api.version>2.26.1</cve.log4j-api.version>
+
+        <!-- Test libraries -->
+        <junit.version>6.1.3</junit.version>
+        <slf4j.version>2.0.20</slf4j.version>
+
+        <!-- Build plugins -->
+        <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
+        <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.6.1</maven-surefire-plugin.version>
+        <maven-jar-plugin.version>3.5.1</maven-jar-plugin.version>
+        <maven-install-plugin.version>3.2.0</maven-install-plugin.version>
+        <maven-deploy-plugin.version>3.2.0</maven-deploy-plugin.version>
+        <maven-site-plugin.version>3.22.0</maven-site-plugin.version>
+        <maven-enforcer-plugin.version>3.7.0</maven-enforcer-plugin.version>
+        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <nifi-nar-maven-plugin.version>2.4.0</nifi-nar-maven-plugin.version>
+        <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
+        <central-publishing-maven-plugin.version>0.12.0</central-publishing-maven-plugin.version>
+
+        <!-- MANIFEST.MF entries -->
+        <impl.spec.vendor>Deepak Kumar Jangir</impl.spec.vendor>
+        <impl.spec.vendor.id>io.github.deepakdaneva</impl.spec.vendor.id>
+
+        <!-- Phase of the placeholder javadoc jar for modules without public Java classes (NAR and placeholder modules set it to 'package') -->
+        <placeholder.javadoc.phase>none</placeholder.javadoc.phase>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
+            <!-- BOMs -->
             <dependency>
-                <groupId>io.github.deepakdaneva.commons</groupId>
-                <artifactId>commons-archive</artifactId>
-                <version>${commons.archive.version}</version>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-bom</artifactId>
+                <version>${tika.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Project modules -->
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-processors</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.deepakdaneva.nifi</groupId>
                 <artifactId>nifi-dd-services-api</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-services-api-nar</artifactId>
+                <version>${project.version}</version>
+                <type>nar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-services</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Apache NiFi -->
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-api</artifactId>
+                <version>${nifi-api.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-distributed-cache-client-service-api</artifactId>
+                <version>${nifi.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-standard-services-api-nar</artifactId>
+                <version>${nifi.version}</version>
+                <type>nar</type>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-mock</artifactId>
+                <version>${nifi.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Archive handling. commons-archive declares commons-compress and commons-io as 'provided',
+                 so the versions below are the ones bundled in the NAR. -->
+            <dependency>
+                <groupId>io.github.deepakdaneva.commons</groupId>
+                <artifactId>commons-archive</artifactId>
+                <version>${commons-archive.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-io</groupId>
@@ -475,63 +210,26 @@
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
-                <artifactId>commons-compress</artifactId>
-                <version>${commons-compress.version}</version>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.nifi</groupId>
-                <artifactId>nifi-api</artifactId>
-                <version>${nifi.version}</version>
-                <scope>provided</scope>
+                <groupId>org.brotli</groupId>
+                <artifactId>dec</artifactId>
+                <version>${brotli.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.nifi</groupId>
-                <artifactId>nifi-utils</artifactId>
-                <version>${nifi.version}</version>
+                <groupId>org.tukaani</groupId>
+                <artifactId>xz</artifactId>
+                <version>${xz.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.nifi</groupId>
-                <artifactId>nifi-standard-services-api-nar</artifactId>
-                <version>${nifi.version}</version>
-                <type>nar</type>
+                <groupId>com.github.luben</groupId>
+                <artifactId>zstd-jni</artifactId>
+                <version>${zstd-jni.version}</version>
             </dependency>
-            <!-- TIKA DEPENDENCIES START -->
-            <dependency>
-                <groupId>org.apache.tika</groupId>
-                <artifactId>tika-core</artifactId>
-                <version>${tika.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tika</groupId>
-                <artifactId>tika-parsers-standard-package</artifactId>
-                <version>${tika.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>commons-logging</groupId>
-                        <artifactId>commons-logging</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>xerces</groupId>
-                        <artifactId>xercesImpl</artifactId> <!-- TEMPORARY EXCLUSION UNTIL VULNERABILITY IS RESOLVED https://ossindex.sonatype.org/component/pkg:maven/xerces/xercesImpl@2.12.2-->
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tika</groupId>
-                <artifactId>tika-parser-sqlite3-package</artifactId>
-                <version>${tika.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tika</groupId>
-                <artifactId>tika-parser-scientific-package</artifactId>
-                <version>${tika.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>c3p0</groupId>
-                        <artifactId>c3p0</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
+
+            <!-- Optional image codecs used by Tika for PDF/image content -->
             <dependency>
                 <groupId>com.github.jai-imageio</groupId>
                 <artifactId>jai-imageio-core</artifactId>
@@ -545,87 +243,323 @@
             <dependency>
                 <groupId>com.twelvemonkeys.imageio</groupId>
                 <artifactId>imageio-jpeg</artifactId>
-                <version>${imageio-jpeg.version}</version>
+                <version>${twelvemonkeys.version}</version>
             </dependency>
-            <!-- TIKA DEPENDENCIES END -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.jayway.jsonpath</groupId>
-                <artifactId>json-path</artifactId>
-                <version>${jayway.version}</version>
-            </dependency>
-            <!-- below dependencies are required to work with some archive files -->
-            <dependency>
-                <groupId>org.brotli</groupId>
-                <artifactId>dec</artifactId>
-                <version>${brotli.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.tukaani</groupId>
-                <artifactId>xz</artifactId>
-                <version>${tukaani.xz.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.github.luben</groupId>
-                <artifactId>zstd-jni</artifactId>
-                <version>${zstd-jni.version}</version>
-            </dependency>
-            <!-- TEMPORARY DEPENDENCIES: START -->
+
+            <!-- CVE overrides: tika-parser-scientific-package -> edu.ucar:cdm/grib/httpservices 4.5.5 pull in
+                 guava 17.0 (CVE-2018-10237, CVE-2020-8908, CVE-2023-2976), protobuf-java 2.5.0 (CVE-2021-22569,
+                 CVE-2022-3171, CVE-2024-7254), quartz 2.2.0 with c3p0 0.9.1.1 (CVE-2019-5427, CVE-2018-20433),
+                 jcommander 1.35 and httpclient 4.2.6 (CVE-2014-3577, CVE-2015-5262, CVE-2020-13956).
+                 Remove once Tika ships a scientific module without these dependencies. -->
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>${temp.guava.version}</version>
+                <version>${cve.guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>${temp.protobuf.version}</version>
+                <version>${cve.protobuf.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.quartz-scheduler</groupId>
                 <artifactId>quartz</artifactId>
-                <version>${temp.quartz.version}</version>
+                <version>${cve.quartz.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.beust</groupId>
                 <artifactId>jcommander</artifactId>
-                <version>${temp.jcommander.version}</version>
+                <version>${cve.jcommander.version}</version>
             </dependency>
-            <!-- TEMPORARY DEPENDENCIES: END -->
-            <!-- TEST DEPENDENCIES: BELOW -->
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${cve.httpclient.version}</version>
+                <exclusions>
+                    <!-- jcl-over-slf4j is bundled instead -->
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpmime</artifactId>
+                <version>${cve.httpclient.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpcore</artifactId>
+                <version>${cve.httpcore.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${cve.log4j-api.version}</version>
+            </dependency>
+
+            <!-- Tests -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-simple</artifactId>
                 <version>${slf4j.version}</version>
                 <scope>test</scope>
             </dependency>
-            <dependency>
-                <groupId>org.apache.nifi</groupId>
-                <artifactId>nifi-mock</artifactId>
-                <version>${nifi.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${junit-jupiter.version}</version>
-                <scope>test</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
-    <developers>
-        <developer>
-            <id>deepakdaneva</id>
-            <name>Deepak Kumar Jangir</name>
-            <url>https://deepakdaneva.github.io</url>
-            <roles>
-                <role>Senior Software Engineer</role>
-            </roles>
-            <timezone>GMT+5:30</timezone>
-        </developer>
-    </developers>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven-clean-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${maven-resources-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <Implementation-Title>${project.artifactId}</Implementation-Title>
+                                <Implementation-Version>${project.version}</Implementation-Version>
+                                <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
+                                <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
+                                <Specification-Title>${project.artifactId}</Specification-Title>
+                                <Specification-Version>${project.version}</Specification-Version>
+                                <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>${maven-install-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${maven-deploy-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${maven-site-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${maven-dependency-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${maven-gpg-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.nifi</groupId>
+                    <artifactId>nifi-nar-maven-plugin</artifactId>
+                    <version>${nifi-nar-maven-plugin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <Implementation-Title>${project.artifactId}</Implementation-Title>
+                                <Implementation-Version>${project.version}</Implementation-Version>
+                                <Implementation-Vendor>${impl.spec.vendor}</Implementation-Vendor>
+                                <Implementation-Vendor-Id>${impl.spec.vendor.id}</Implementation-Vendor-Id>
+                                <Specification-Title>${project.artifactId}</Specification-Title>
+                                <Specification-Version>${project.version}</Specification-Version>
+                                <Specification-Vendor>${impl.spec.vendor}</Specification-Vendor>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${central-publishing-maven-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.9,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                </requireJavaVersion>
+                                <requirePluginVersions/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- Formatting is verified on 'verify'; run './mvnw spotless:apply' to fix violations. -->
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <eclipse>
+                            <file>${maven.multiModuleProjectDirectory}/eclipse-formatter.xml</file>
+                        </eclipse>
+                        <licenseHeader>
+                            <file>${maven.multiModuleProjectDirectory}/license-header</file>
+                        </licenseHeader>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- Release and snapshot publishing to Maven Central (central.sonatype.com).
+                 Requires a 'central' server in settings.xml and the MAVEN_GPG_PASSPHRASE environment variable. -->
+            <id>publish</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <quiet>true</quiet>
+                            <doclint>all,-missing</doclint>
+                            <detectOfflineLinks>false</detectOfflineLinks>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <!-- Maven Central requires a javadoc jar for every non-pom artifact. Modules without public
+                             Java classes (NARs and the placeholder service modules) attach a placeholder javadoc jar
+                             built from src/publish/javadoc (see placeholder.javadoc.phase). -->
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>placeholder-javadoc</id>
+                                <phase>${placeholder.javadoc.phase}</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>javadoc</classifier>
+                                    <classesDirectory>${project.basedir}/src/publish/javadoc</classesDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
