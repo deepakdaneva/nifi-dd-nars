@@ -17,6 +17,7 @@ extraction, archive inspection and safe recursive unpacking (all backed by [Apac
   - [DDUnpackContent](#ddunpackcontent)
   - [DDRemoveDistributedMapCache](#ddremovedistributedmapcache)
   - [Error attributes](#error-attributes)
+- [Project structure](#project-structure)
 - [Requirements](#requirements)
 - [Compatibility](#compatibility)
 - [Installation](#installation)
@@ -165,6 +166,29 @@ When a processor routes a FlowFile because of an error it adds:
 | `deepakdaneva.exception.message` | Exception message. |
 | `deepakdaneva.exception.class` | Fully qualified exception class name, e.g. `io.github.deepakdaneva.nifi.exceptions.UnpackSizeThresholdReachedException`. |
 
+## Project structure
+
+| Module | Packaging | Role |
+|---|---|---|
+| `nifi-dd-processors` | jar | The processors documented above. |
+| `nifi-dd-processors-nar` | nar | Bundles `nifi-dd-processors` and its libraries; parent NAR `nifi-standard-services-api-nar`. This is the NAR to install. |
+| `nifi-dd-services-api` | jar | Placeholder for upcoming controller service interfaces. |
+| `nifi-dd-services-api-nar` | nar | Bundles `nifi-dd-services-api`; parent NAR `nifi-standard-services-api-nar`. |
+| `nifi-dd-services` | jar | Placeholder for upcoming controller service implementations. |
+| `nifi-dd-services-nar` | nar | Bundles `nifi-dd-services`; parent NAR `nifi-dd-services-api-nar`. |
+
+NAR hierarchy:
+
+```
+nifi-standard-services-api-nar          (Apache NiFi)
+  +-- nifi-dd-processors-nar
+  +-- nifi-dd-services-api-nar
+        +-- nifi-dd-services-nar
+```
+
+The service modules contain no components yet; they define the layout for future controller services (API and
+implementation, each packaged as its own NAR). See the README in each module.
+
 ## Requirements
 
 - Apache NiFi 2.x (built and tested against NiFi **2.12.0**)
@@ -225,3 +249,7 @@ downloads the right Maven version.
 
 Licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE); the NAR carries the licenses and notices of
 the third-party components it bundles in `META-INF/LICENSE` and `META-INF/NOTICE`.
+
+Parts of `DDIdentifyMimeType` and `DDUnpackContent` are adapted from Apache NiFi's `IdentifyMimeType` and
+`UnpackContent` processors (Apache License 2.0, Copyright The Apache Software Foundation); this is recorded in
+[NOTICE](NOTICE) and in the NAR's `META-INF/NOTICE`.

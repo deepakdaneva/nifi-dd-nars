@@ -60,6 +60,26 @@
         },
         {
           "type": "xml",
+          "path": "nifi-dd-services-api/pom.xml",
+          "xpath": "/*[local-name()=\"project\"]/*[local-name()=\"parent\"]/*[local-name()=\"version\"]"
+        },
+        {
+          "type": "xml",
+          "path": "nifi-dd-services-api-nar/pom.xml",
+          "xpath": "/*[local-name()=\"project\"]/*[local-name()=\"parent\"]/*[local-name()=\"version\"]"
+        },
+        {
+          "type": "xml",
+          "path": "nifi-dd-services/pom.xml",
+          "xpath": "/*[local-name()=\"project\"]/*[local-name()=\"parent\"]/*[local-name()=\"version\"]"
+        },
+        {
+          "type": "xml",
+          "path": "nifi-dd-services-nar/pom.xml",
+          "xpath": "/*[local-name()=\"project\"]/*[local-name()=\"parent\"]/*[local-name()=\"version\"]"
+        },
+        {
+          "type": "xml",
           "path": "nifi-dd-processors/pom.xml",
           "xpath": "/*[local-name()=\"project\"]/*[local-name()=\"parent\"]/*[local-name()=\"version\"]"
         },

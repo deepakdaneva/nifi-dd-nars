@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.deepakdaneva.nifi</groupId>
+        <artifactId>nifi-dd-nars</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>nifi-dd-services-api-nar</artifactId>
+    <packaging>nar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
+    <description>Apache NiFi NAR bundling the nifi-dd-services-api controller service APIs (placeholder for upcoming controller services).</description>
+
+    <properties>
+        <!-- Maven Central requires a javadoc jar; a NAR has no Java sources, so publish a placeholder -->
+        <placeholder.javadoc.phase>package</placeholder.javadoc.phase>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-nar-maven-plugin</artifactId>
+                <extensions>true</extensions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.deepakdaneva.nifi</groupId>
+            <artifactId>nifi-dd-services-api</artifactId>
+        </dependency>
+        <!-- Parent NAR: provides the standard NiFi controller service APIs -->
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-standard-services-api-nar</artifactId>
+            <type>nar</type>
+        </dependency>
+    </dependencies>
+</project>

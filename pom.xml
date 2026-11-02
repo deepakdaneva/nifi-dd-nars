@@ -44,6 +44,10 @@
     </ciManagement>
 
     <modules>
+        <module>nifi-dd-services-api</module>
+        <module>nifi-dd-services-api-nar</module>
+        <module>nifi-dd-services</module>
+        <module>nifi-dd-services-nar</module>
         <module>nifi-dd-processors</module>
         <module>nifi-dd-processors-nar</module>
     </modules>
@@ -109,7 +113,7 @@
         <impl.spec.vendor>Deepak Kumar Jangir</impl.spec.vendor>
         <impl.spec.vendor.id>io.github.deepakdaneva</impl.spec.vendor.id>
 
-        <!-- Phase of the placeholder javadoc jar for modules without Java sources (NAR modules set it to 'package') -->
+        <!-- Phase of the placeholder javadoc jar for modules without public Java classes (NAR and placeholder modules set it to 'package') -->
         <placeholder.javadoc.phase>none</placeholder.javadoc.phase>
     </properties>
 
@@ -142,6 +146,22 @@
             <dependency>
                 <groupId>io.github.deepakdaneva.nifi</groupId>
                 <artifactId>nifi-dd-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-services-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-services-api-nar</artifactId>
+                <version>${project.version}</version>
+                <type>nar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.github.deepakdaneva.nifi</groupId>
+                <artifactId>nifi-dd-services</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -490,8 +510,9 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <!-- Maven Central requires a javadoc jar for every non-pom artifact. NAR modules have no
-                             Java sources, so they attach a placeholder javadoc jar (see placeholder.javadoc.phase). -->
+                        <!-- Maven Central requires a javadoc jar for every non-pom artifact. Modules without public
+                             Java classes (NARs and the placeholder service modules) attach a placeholder javadoc jar
+                             built from src/publish/javadoc (see placeholder.javadoc.phase). -->
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
                         <executions>
