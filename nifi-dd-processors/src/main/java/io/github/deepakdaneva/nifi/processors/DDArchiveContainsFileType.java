@@ -12,308 +12,275 @@
  */
 package io.github.deepakdaneva.nifi.processors;
 
-import io.github.deepakdaneva.commons.archive.NotAnArchiveOrSupportedArchiveException;
-import io.github.deepakdaneva.commons.archive.ArchiveUtil;
-import io.github.deepakdaneva.nifi.core.DDCoreAttributes;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
+import io.github.deepakdaneva.commons.archive.ArchiveUtil;
+import io.github.deepakdaneva.commons.archive.NotAnArchiveOrSupportedArchiveException;
+import io.github.deepakdaneva.nifi.core.DDCoreAttributes;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.compressors.CompressorException;
-import org.apache.commons.io.IOUtils;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.SideEffectFree;
 import org.apache.nifi.annotation.behavior.SupportsBatching;
+import org.apache.nifi.annotation.behavior.SystemResource;
+import org.apache.nifi.annotation.behavior.SystemResourceConsideration;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
-import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
+import org.apache.nifi.components.resource.ResourceCardinality;
+import org.apache.nifi.components.resource.ResourceType;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.logging.ComponentLog;
-import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.tika.detect.DefaultDetector;
+import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.Detector;
-import org.apache.tika.metadata.Metadata;
+import org.apache.tika.io.TikaInputStream;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
+ * Searches the entries of an archive FlowFile for any of a configured set of MIME types.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 @SideEffectFree
 @SupportsBatching
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
-@Tags({DDCoreAttributes.DEEPAKDANEVA, "mime", "content", "content-type", "identify", "zip", "archive"})
-@CapabilityDescription("Attempts to search for any subfile mime type within the archive that matches one of the specified mime types given by the json array body or json array file path. This processor will stop processing the file further as soon as it found a match and will transfer the flowfile to success. NOTE: 1) Any exceptions raised during the detection of subfile mime type will be ignored. NOTE: This processor is backed by Apache Tika (https://tika.apache.org) and Apache Commons Compress (https://commons.apache.org/proper/commons-compress) check these to know more.")
-@WritesAttributes({@WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_MIME_TYPE, description = "Detected mime type of the given archive file will be provided by this attribute."), @WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_SUBFILE_MATCH_FOUND, description = "Boolean flag whether any match if found or not."), @WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE, description = "String mime type for which match is found."), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, description = DDCoreAttributes.DD_EXCEPTION_MESSAGE_DESC), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, description = DDCoreAttributes.DD_EXCEPTION_CLASS_DESC)})
-public class DDArchiveContainsFileType extends AbstractProcessor {
+@Tags({DDCoreAttributes.DEEPAKDANEVA, "mime", "content", "content-type", "identify", "zip", "tar", "7z", "archive", "search"})
+@CapabilityDescription("Detects the MIME type of every file inside an archive FlowFile and checks whether any of them matches one of the configured MIME types. " + "The search stops at the first match and the FlowFile, with its content unchanged, is routed to 'success' with attributes describing the result. " + "Supported formats are those of Apache Commons Compress (zip, jar, tar, 7z, ar, arj, cpio, dump and tar compressed with gzip, bzip2, xz, lzma, brotli, zstd, ...). " + "MIME types are detected with Apache Tika. Entries are streamed; nested 7z archives are buffered in memory.")
+@WritesAttributes({@WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_MIME_TYPE, description = "Detected MIME type of the incoming FlowFile."), @WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_SUBFILE_MATCH_FOUND, description = "'true' if an entry with one of the configured MIME types was found, otherwise 'false'."), @WritesAttribute(attribute = DDArchiveContainsFileType.DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE, description = "The MIME type that matched. Only set when a match is found."), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, description = DDCoreAttributes.DD_EXCEPTION_MESSAGE_DESC), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, description = DDCoreAttributes.DD_EXCEPTION_CLASS_DESC)})
+@SystemResourceConsideration(resource = SystemResource.MEMORY, description = "Nested 7z archives need random access and are buffered in memory while being inspected.")
+@SeeAlso({DDUnpackContent.class, DDIdentifyMimeType.class})
+public class DDArchiveContainsFileType extends AbstractDDProcessor {
 
-    public static final PropertyDescriptor ROUTE_TO_FAILURE = new PropertyDescriptor.Builder().name("Non Archive/Unsupported to Failure").description("If true will route all non archive files or unsupported files to failure.").required(true).allowableValues("true", "false").defaultValue("true").build();
-    public static final PropertyDescriptor RECURSE_SUB_ARCHIVES = new PropertyDescriptor.Builder().name("Recurse Sub Archives").description("If true will checking all the supported sub archive files recursively.").required(true).allowableValues("true", "false").defaultValue("false").build();
-    public static final PropertyDescriptor FAIL_ON_SUB_ARCHIVES = new PropertyDescriptor.Builder().name("Fail on Sub Archives").description("If true and any exception is raised during sub archive processing then will route the FlowFile to failure or else continue processing other entries of the archive ignoring the sub archive exceptions.").required(true).allowableValues("true", "false").defaultValue("false").build();
-    public static final PropertyDescriptor MIME_TYPES_CONFIG_FILE = new PropertyDescriptor.Builder().name("Search Mime Types Config File").required(false).description("Path to Json Array MIME type config file having mime types of subfile to search for. Only one of Config File or Config Body may be used.").addValidator(StandardValidators.NON_BLANK_VALIDATOR).addValidator(new StandardValidators.FileExistsValidator(true)).expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY).build();
-    public static final PropertyDescriptor MIME_TYPES_CONFIG_BODY = new PropertyDescriptor.Builder().name("Search Mime Types Config Body").required(false).description("Json Array Body of MIME type config file having mime types of subfile to search for. Only one of Config File or Config Body may be used.").addValidator(StandardValidators.NON_BLANK_VALIDATOR).expressionLanguageSupported(ExpressionLanguageScope.NONE).build();
-    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("All FlowFiles are routed to success").build();
-    public static final Relationship REL_FAILURE = new Relationship.Builder().name("failure").description("All FlowFiles are routed to failure").build();
-    static final String DD_ARCHIVE_MIME_TYPE = "dd.archive.mime.type";
-    static final String DD_ARCHIVE_SUBFILE_MATCH_FOUND = "dd.archive.subfile.match.found";
-    static final String DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE = "dd.archive.subfile.match.found.type";
-    public static final String SEMICOLON = ";";
-    private final ObjectMapper objectMapper;
-    private Set<String> MIME_TYPES_TO_SEARCH;
-    private Set<Relationship> relationships;
-    private List<PropertyDescriptor> properties;
-    private boolean ROUTE_TO_FAILURE_ON_ERROR;
-    private boolean CHECK_SUB_ARCHIVES;
-    private boolean FAIL_ON_SUB_ARCHIVE_FAILURES;
-    private Detector detector;
-    private ComponentLog log;
+    /**
+     * Attribute holding the detected MIME type of the incoming FlowFile.
+     */
+    public static final String DD_ARCHIVE_MIME_TYPE = "dd.archive.mime.type";
+    /**
+     * Attribute holding whether a matching entry was found.
+     */
+    public static final String DD_ARCHIVE_SUBFILE_MATCH_FOUND = "dd.archive.subfile.match.found";
+    /**
+     * Attribute holding the matched MIME type.
+     */
+    public static final String DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE = "dd.archive.subfile.match.found.type";
 
-    public DDArchiveContainsFileType() {
-        objectMapper = new ObjectMapper();
-        MIME_TYPES_TO_SEARCH = new HashSet<>();
-    }
+    /**
+     * Routes non-archive or unsupported FlowFiles to failure instead of success.
+     */
+    public static final PropertyDescriptor ROUTE_TO_FAILURE = new PropertyDescriptor.Builder().name("Non Archive/Unsupported to Failure").description("If true, FlowFiles that are not archives or are unsupported archives are routed to 'failure'; otherwise they are routed to 'success' with '" + DD_ARCHIVE_SUBFILE_MATCH_FOUND + "' set to 'false'.").required(true).allowableValues("true", "false").defaultValue("true").build();
 
-    @Override
-    protected void init(final ProcessorInitializationContext context) {
-        properties = List.of(ROUTE_TO_FAILURE, RECURSE_SUB_ARCHIVES, FAIL_ON_SUB_ARCHIVES, MIME_TYPES_CONFIG_FILE, MIME_TYPES_CONFIG_BODY);
-        relationships = Set.of(REL_SUCCESS, REL_FAILURE);
-        log = getLogger();
-    }
+    /**
+     * Searches inside nested archives as well.
+     */
+    public static final PropertyDescriptor RECURSE_SUB_ARCHIVES = new PropertyDescriptor.Builder().name("Recurse Sub Archives").description("If true, supported archives found inside the archive are searched recursively.").required(true).allowableValues("true", "false").defaultValue("false").build();
 
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
-        initializeMimesToSearch(context);
-        ROUTE_TO_FAILURE_ON_ERROR = context.getProperty(ROUTE_TO_FAILURE).asBoolean();
-        CHECK_SUB_ARCHIVES = context.getProperty(RECURSE_SUB_ARCHIVES).asBoolean();
-        FAIL_ON_SUB_ARCHIVE_FAILURES = context.getProperty(FAIL_ON_SUB_ARCHIVES).asBoolean();
-        detector = new DefaultDetector();
-    }
+    /**
+     * Fails the FlowFile if a nested archive cannot be read.
+     */
+    public static final PropertyDescriptor FAIL_ON_SUB_ARCHIVES = new PropertyDescriptor.Builder().name("Fail on Sub Archives").description("If true and a nested archive cannot be read, the FlowFile is routed to 'failure'. If false, the unreadable nested archive is skipped and the search continues.").required(true).allowableValues("true", "false").defaultValue("false").dependsOn(RECURSE_SUB_ARCHIVES, "true").build();
 
-    @OnUnscheduled
-    public void onUnscheduled(final ProcessContext context) {
-        MIME_TYPES_TO_SEARCH.clear();
-    }
+    /**
+     * Maximum depth of nested archives that are opened.
+     */
+    public static final PropertyDescriptor MAX_SUB_ARCHIVE_DEPTH = new PropertyDescriptor.Builder().name("Maximum Sub Archive Depth").description("Maximum nesting depth of archives that are opened when searching recursively. Archives nested deeper are matched by their own MIME type only. Protects against recursive archive bombs.").required(true).addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR).defaultValue("10").dependsOn(RECURSE_SUB_ARCHIVES, "true").build();
 
-    private void initializeMimesToSearch(final ProcessContext context) {
-        String body = context.getProperty(MIME_TYPES_CONFIG_BODY).getValue();
-        String file = context.getProperty(MIME_TYPES_CONFIG_FILE).getValue();
-        if (body != null) {
-            try {
-                MIME_TYPES_TO_SEARCH = objectMapper.readValue(body, new TypeReference<>() {
-                });
-            } catch (Exception e) {
-                context.yield();
-                throw new ProcessException("Failed to load mime types config body, it's not a valid json or not a valid string array json (i.e. [\"application/pdf\",\"application/zip\"])", e);
-            }
-        } else if (file != null) {
-            try {
-                MIME_TYPES_TO_SEARCH = objectMapper.readValue(Paths.get(file).toFile(), new TypeReference<>() {
-                });
-            } catch (Exception e) {
-                context.yield();
-                throw new ProcessException("Failed to load mime types config file, it's not a valid json file or not a valid string array json (i.e. [\"application/pdf\",\"application/zip\"])", e);
-            }
-        }
-        MIME_TYPES_TO_SEARCH.removeIf(e -> e == null || e.trim().isEmpty());
-    }
+    /**
+     * Path of a JSON file listing the MIME types to search for.
+     */
+    public static final PropertyDescriptor MIME_TYPES_CONFIG_FILE = new PropertyDescriptor.Builder().name("Search Mime Types Config File").description("Path to a file containing a JSON array of MIME types to search for, e.g. [\"application/pdf\",\"text/plain\"]. Exactly one of the config file or config body must be set.").required(false).identifiesExternalResource(ResourceCardinality.SINGLE, ResourceType.FILE).expressionLanguageSupported(ExpressionLanguageScope.ENVIRONMENT).build();
+
+    /**
+     * JSON array of the MIME types to search for.
+     */
+    public static final PropertyDescriptor MIME_TYPES_CONFIG_BODY = new PropertyDescriptor.Builder().name("Search Mime Types Config Body").description("JSON array of MIME types to search for, e.g. [\"application/pdf\",\"text/plain\"]. Exactly one of the config file or config body must be set.").required(false).addValidator(StandardValidators.NON_BLANK_VALIDATOR).expressionLanguageSupported(ExpressionLanguageScope.NONE).build();
+
+    /**
+     * Relationship for processed FlowFiles.
+     */
+    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("FlowFiles that were searched successfully, whether or not a match was found.").build();
+    /**
+     * Relationship for FlowFiles that could not be searched.
+     */
+    public static final Relationship REL_FAILURE = new Relationship.Builder().name("failure").description("FlowFiles that could not be searched.").build();
+
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(ROUTE_TO_FAILURE, RECURSE_SUB_ARCHIVES, FAIL_ON_SUB_ARCHIVES, MAX_SUB_ARCHIVE_DEPTH, MIME_TYPES_CONFIG_FILE, MIME_TYPES_CONFIG_BODY);
+    private static final Set<Relationship> RELATIONSHIPS = Set.of(REL_SUCCESS, REL_FAILURE);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {
+    };
+
+    private volatile Set<String> mimeTypesToSearch = Set.of();
+    private volatile boolean routeUnsupportedToFailure;
+    private volatile boolean recurse;
+    private volatile boolean failOnSubArchiveError;
+    private volatile int maxDepth;
+    private volatile Detector detector;
 
     @Override
     public Set<Relationship> getRelationships() {
-        return relationships;
+        return RELATIONSHIPS;
     }
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return properties;
+        return PROPERTY_DESCRIPTORS;
+    }
+
+    /**
+     * Loads the configuration when the processor is scheduled.
+     *
+     * @param context process context.
+     */
+    @OnScheduled
+    public void onScheduled(final ProcessContext context) {
+        mimeTypesToSearch = loadMimeTypes(context);
+        routeUnsupportedToFailure = context.getProperty(ROUTE_TO_FAILURE).asBoolean();
+        recurse = context.getProperty(RECURSE_SUB_ARCHIVES).asBoolean();
+        // dependent properties have no value when recursion is disabled
+        failOnSubArchiveError = recurse && context.getProperty(FAIL_ON_SUB_ARCHIVES).asBoolean();
+        maxDepth = recurse ? context.getProperty(MAX_SUB_ARCHIVE_DEPTH).asInteger() : 1;
+        detector = TikaConfig.getDefaultConfig().getDetector();
+    }
+
+    private Set<String> loadMimeTypes(final ProcessContext context) {
+        final String body = context.getProperty(MIME_TYPES_CONFIG_BODY).getValue();
+        try {
+            final List<String> types = body != null ? OBJECT_MAPPER.readValue(body, STRING_LIST) : OBJECT_MAPPER.readValue(context.getProperty(MIME_TYPES_CONFIG_FILE).evaluateAttributeExpressions().asResource().read(), STRING_LIST);
+            return types.stream().filter(Objects::nonNull).map(String::trim).filter(t -> !t.isEmpty()).collect(Collectors.toUnmodifiableSet());
+        } catch (final IOException e) {
+            throw new ProcessException("Failed to load MIME types; expected a JSON array of strings such as [\"application/pdf\",\"application/zip\"]", e);
+        }
     }
 
     @Override
-    public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
+    protected Collection<ValidationResult> customValidate(final ValidationContext validationContext) {
+        final List<ValidationResult> results = new ArrayList<>();
+        final String body = validationContext.getProperty(MIME_TYPES_CONFIG_BODY).getValue();
+        final boolean fileSet = validationContext.getProperty(MIME_TYPES_CONFIG_FILE).isSet();
+        if (body != null && fileSet) {
+            results.add(new ValidationResult.Builder().subject(MIME_TYPES_CONFIG_BODY.getName()).valid(false).explanation("only one of '" + MIME_TYPES_CONFIG_BODY.getName() + "' or '" + MIME_TYPES_CONFIG_FILE.getName() + "' can be set").build());
+        } else if (body == null && !fileSet) {
+            results.add(new ValidationResult.Builder().subject(MIME_TYPES_CONFIG_BODY.getName()).valid(false).explanation("one of '" + MIME_TYPES_CONFIG_BODY.getName() + "' or '" + MIME_TYPES_CONFIG_FILE.getName() + "' is required").build());
+        } else if (body != null) {
+            try {
+                OBJECT_MAPPER.readValue(body, STRING_LIST);
+            } catch (final IOException e) {
+                results.add(new ValidationResult.Builder().subject(MIME_TYPES_CONFIG_BODY.getName()).input(body).valid(false).explanation("not a JSON array of strings: " + e.getMessage()).build());
+            }
+        }
+        return results;
+    }
+
+    @Override
+    public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
         FlowFile flowFile = session.get();
         if (flowFile == null) {
             return;
         }
 
-        InputStream inputStream = null;
-        ArchiveInputStream archiveInputStream = null;
+        final String[] archiveMimeType = new String[1];
+        final String found;
         try {
-            inputStream = new BufferedInputStream(session.read(flowFile));
-            String mimeType = detector.detect(inputStream, new Metadata()).toString().split(SEMICOLON)[0];
-            archiveInputStream = ArchiveUtil.getArchiveInputStream(inputStream, mimeType, false);
-            if (Objects.nonNull(archiveInputStream) && Objects.nonNull(MIME_TYPES_TO_SEARCH) && !MIME_TYPES_TO_SEARCH.isEmpty()) {
-                String foundMimeType = findMimeType(archiveInputStream);
-                IOUtils.closeQuietly(archiveInputStream, inputStream);
-                routeToSuccess(session, flowFile, mimeType, foundMimeType);
-            } else {
-                IOUtils.closeQuietly(archiveInputStream, inputStream);
-                routeToSuccess(session, flowFile, mimeType, null);
+            found = searchFlowFile(session, flowFile, archiveMimeType);
+        } catch (final NotAnArchiveOrSupportedArchiveException e) {
+            getLogger().debug("{} is not a supported archive", flowFile, e);
+            transferResult(session, flowFile, archiveMimeType[0], null, routeUnsupportedToFailure ? REL_FAILURE : REL_SUCCESS, e);
+            return;
+        } catch (final Exception e) {
+            getLogger().error("Failed to search archive {}", flowFile, e);
+            transferResult(session, flowFile, archiveMimeType[0], null, REL_FAILURE, e);
+            return;
+        }
+        transferResult(session, flowFile, archiveMimeType[0], found, REL_SUCCESS, null);
+    }
+
+    /**
+     * Reads the FlowFile content and searches it. The content stream is closed before returning so the FlowFile can be
+     * modified and transferred afterwards.
+     */
+    private String searchFlowFile(final ProcessSession session, final FlowFile flowFile, final String[] archiveMimeType) throws Exception {
+        try (InputStream in = TikaInputStream.get(new BufferedInputStream(session.read(flowFile)))) {
+            archiveMimeType[0] = detectMimeType(detector, in);
+            try (ArchiveInputStream<?> archive = ArchiveUtil.getArchiveInputStream(in, archiveMimeType[0])) {
+                return mimeTypesToSearch.isEmpty() ? null : search(archive, 1);
             }
-        } catch (NotAnArchiveOrSupportedArchiveException e) {
-            IOUtils.closeQuietly(archiveInputStream, inputStream);
-            if (ROUTE_TO_FAILURE_ON_ERROR) {
-                route(session, flowFile, e, REL_FAILURE);
-            } else {
-                route(session, flowFile, e, REL_SUCCESS);
-            }
-        } catch (Exception e) {
-            IOUtils.closeQuietly(archiveInputStream, inputStream);
-            route(session, flowFile, e, REL_FAILURE);
         }
     }
 
     /**
-     * This method find the mime type of the entries inside the archive (or sub archives). This method will not close the provided ArchiveInputStream (but will close all sub-archives).
-     * 
-     * @param ais ArchiveInputStream instance of the archive file.
-     * @return found mime-type inside the archive from the provided mime-type list.
-     */
-    private String findMimeType(final ArchiveInputStream ais) throws CompressorException, IOException, ArchiveException, NotAnArchiveOrSupportedArchiveException {
-        List<ArchiveInputStream> subArchives = new ArrayList<>();
-        try {
-            ArchiveEntry arcEntry;
-            while ((arcEntry = ais.getNextEntry()) != null) {
-                if (!arcEntry.isDirectory()) {
-                    InputStream entryInputStream = null;
-                    boolean closeStream = true;
-                    try {
-                        entryInputStream = ArchiveUtil.getEntryInputStream(ais);
-                        String entryType = detectMimeType(entryInputStream);
-                        if (CHECK_SUB_ARCHIVES) {
-                            ArchiveInputStream subArcStream = ArchiveUtil.getArchiveInputStream(entryInputStream, entryType, true);
-                            if (Objects.nonNull(subArcStream)) {
-                                subArchives.add(subArcStream);
-                                closeStream = false;
-                                continue;
-                            }
-                        }
-                        if (MIME_TYPES_TO_SEARCH.contains(entryType)) {
-                            return entryType;
-                        }
-                    } finally {
-                        if (closeStream) {
-                            IOUtils.closeQuietly(entryInputStream);
-                        }
-                    }
-                }
-            }
-            // check in sub archive
-            for (ArchiveInputStream sais : subArchives) {
-                try {
-                    String sMimeType = findMimeType(sais);
-                    if (MIME_TYPES_TO_SEARCH.contains(sMimeType)) {
-                        return sMimeType;
-                    }
-                } catch (Exception e) {
-                    if (FAIL_ON_SUB_ARCHIVE_FAILURES) {
-                        throw e;
-                    } else {
-                        log.warn("Error while processing sub-archive", e);
-                    }
-                } finally {
-                    IOUtils.closeQuietly(sais);
-                }
-            }
-        } finally {
-            ArchiveUtil.closeQuietly(subArchives);
-        }
-        return null;
-    }
-
-    /**
-     * This method detects the Mime-Type of the input stream, also it removes any additional information from the detected Mime-Type like version, charset etc.
-     * 
-     * @param inputStream for which Mime-Type should be identified.
-     * @return identified Mime-Type of the input stream.
-     * @throws java.io.IOException in case any IOException is raised.
-     */
-    private String detectMimeType(final InputStream inputStream) throws IOException {
-        return detector.detect(inputStream, new Metadata()).toString().split(SEMICOLON)[0];
-    }
-
-    /**
-     * This method routes the FlowFile to the given relationship with the provided exception if any, if provided exception is null then it'll not set the exception attributes.
+     * Depth-first search of an archive.
      *
-     * @param session process session.
-     * @param flowFile flowFile.
-     * @param exception instance.
+     * @return the first matching MIME type or {@code null}.
      */
-    private void route(final ProcessSession session, FlowFile flowFile, final Exception exception, final Relationship relationship) {
-        if (Objects.nonNull(exception)) {
-            flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, exception.getMessage());
-            flowFile = session.putAttribute(flowFile, DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, exception.getClass().getName());
+    private String search(final ArchiveInputStream<?> archive, final int depth) throws IOException {
+        final String[] found = new String[1];
+        ArchiveWalker.walk(archive, (entry, content) -> {
+            final String entryType = detectMimeType(detector, content);
+            if (mimeTypesToSearch.contains(entryType)) {
+                found[0] = entryType;
+                return false;
+            }
+            if (recurse && depth < maxDepth) {
+                found[0] = searchNested(content, entryType, depth);
+            }
+            return found[0] == null;
+        });
+        return found[0];
+    }
+
+    private String searchNested(final InputStream content, final String entryType, final int depth) throws IOException {
+        try {
+            final ArchiveWalker.Nested nested = ArchiveWalker.openNested(content, entryType, NO_LIMIT);
+            if (nested.archive() == null) {
+                return null;
+            }
+            try (ArchiveInputStream<?> archive = nested.archive()) {
+                return search(archive, depth + 1);
+            }
+        } catch (final IOException | RuntimeException e) {
+            if (failOnSubArchiveError) {
+                throw e;
+            }
+            getLogger().warn("Skipping unreadable nested archive of type {}", entryType, e);
+            return null;
         }
+    }
+
+    private void transferResult(final ProcessSession session, FlowFile flowFile, final String archiveMimeType, final String found, final Relationship relationship, final Exception exception) {
+        final Map<String, String> attributes = new HashMap<>(exceptionAttributes(exception));
+        if (archiveMimeType != null) {
+            attributes.put(DD_ARCHIVE_MIME_TYPE, archiveMimeType);
+        }
+        if (relationship == REL_SUCCESS) {
+            attributes.put(DD_ARCHIVE_SUBFILE_MATCH_FOUND, String.valueOf(found != null));
+            if (found != null) {
+                attributes.put(DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE, found);
+            }
+        }
+        flowFile = session.putAllAttributes(flowFile, attributes);
         session.getProvenanceReporter().modifyAttributes(flowFile);
         session.transfer(flowFile, relationship);
-        if (relationship.equals(REL_FAILURE)) {
-            log.error("exception raised while searching the supported mime types inside archive", exception);
-        }
     }
-
-    /**
-     * This method will route the FlowFile to success.
-     * 
-     * @param session process session.
-     * @param flowFile FlowFile.
-     * @param archiveMimeType processed archive detected mime type.
-     * @param foundMimeType found mime type inside the archive.
-     */
-    private void routeToSuccess(ProcessSession session, FlowFile flowFile, String archiveMimeType, String foundMimeType) {
-        flowFile = session.putAttribute(flowFile, DD_ARCHIVE_SUBFILE_MATCH_FOUND, String.valueOf(foundMimeType != null));
-        if (archiveMimeType != null) {
-            flowFile = session.putAttribute(flowFile, DD_ARCHIVE_MIME_TYPE, archiveMimeType);
-        }
-        if (foundMimeType != null) {
-            flowFile = session.putAttribute(flowFile, DD_ARCHIVE_SUBFILE_MATCH_FOUND_TYPE, foundMimeType);
-        }
-        session.getProvenanceReporter().modifyAttributes(flowFile);
-        session.transfer(flowFile, REL_SUCCESS);
-    }
-
-    /**
-     * This method validates the processor when scheduled.
-     * 
-     * @param validationContext provides a mechanism for obtaining externally
-     * managed values, such as property values and supplies convenience methods
-     * for operating on those values
-     *
-     * @return ValidationResult of the executed validation.
-     */
-    @Override
-    protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
-        Set<ValidationResult> results = new HashSet<>();
-        String body = validationContext.getProperty(MIME_TYPES_CONFIG_BODY).getValue();
-        String file = validationContext.getProperty(MIME_TYPES_CONFIG_FILE).evaluateAttributeExpressions().getValue();
-        if (body != null && file != null) {
-            results.add(new ValidationResult.Builder().input(MIME_TYPES_CONFIG_BODY.getName()).valid(false).explanation("only one property can be set, specify '" + MIME_TYPES_CONFIG_BODY.getName() + "' or '" + MIME_TYPES_CONFIG_FILE.getName() + "'. Not both.").build());
-        } else if (Objects.isNull(body) && Objects.isNull(file)) {
-            results.add(new ValidationResult.Builder().input(MIME_TYPES_CONFIG_BODY.getName()).valid(false).explanation("one of '" + MIME_TYPES_CONFIG_BODY.getName() + "' or '" + MIME_TYPES_CONFIG_FILE.getName() + "' is required. Both can not be empty.").build());
-        }
-        return results;
-    }
-
 }

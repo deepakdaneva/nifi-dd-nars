@@ -5,54 +5,37 @@
     <parent>
         <groupId>io.github.deepakdaneva.nifi</groupId>
         <artifactId>nifi-dd-nars</artifactId>
-        <version>1.0.0</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>nifi-dd-processors-nar</artifactId>
     <packaging>nar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
+    <description>Apache NiFi NAR bundling the nifi-dd-processors extensions and their runtime libraries.</description>
+
+    <properties>
+        <!-- Maven Central requires a javadoc jar; a NAR has no Java sources, so publish a placeholder -->
+        <placeholder.javadoc.phase>package</placeholder.javadoc.phase>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                        <phase>none</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-nar-maven-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifestEntries>
-                            <Implementation-Title>${project.artifactId}</Implementation-Title>
-                            <Specification-Title>${project.artifactId}</Specification-Title>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
+                <extensions>true</extensions>
             </plugin>
         </plugins>
     </build>
-    <properties>
-        <maven.javadoc.skip>true</maven.javadoc.skip>
-        <source.skip>true</source.skip>
-        <spotless.apply.skip>true</spotless.apply.skip>
-        <spotless.check.skip>true</spotless.check.skip>
-    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.github.deepakdaneva.nifi</groupId>
             <artifactId>nifi-dd-processors</artifactId>
-            <version>${project.version}</version>
         </dependency>
+        <!-- Parent NAR: provides the controller service APIs (DistributedMapCacheClient) -->
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-standard-services-api-nar</artifactId>
-            <version>${nifi.version}</version>
             <type>nar</type>
         </dependency>
     </dependencies>

@@ -1,8 +1,124 @@
-NOTICE
+nifi-dd-processors-nar
+Copyright 2023-2026 Deepak Kumar Jangir
 
-This project includes many third-party components/libraries, please refer the dependencies.
-Refer to the respective websites and licenses for more details on the usage and licensing terms of these components/libraries.
+This product includes software developed by Deepak Kumar Jangir
+(https://deepakdaneva.github.io) and is licensed under the Apache License,
+Version 2.0. Third-party components bundled in this NAR, and the licenses
+under which they are distributed, are listed below and in META-INF/LICENSE.
 
-Deepak Kumar Jangir
-[https://deepakdaneva.github.io](https://deepakdaneva.github.io)
-11th October 2023
+******************
+Apache Software License v2
+******************
+
+The following binary components are provided under the Apache Software License v2
+
+  (ASLv2) Apache Tika (org.apache.tika:tika-core, tika-parsers-standard-package,
+          tika-parser-sqlite3-package, tika-parser-scientific-package and their modules)
+    The following NOTICE information applies:
+      Apache Tika
+      Copyright The Apache Software Foundation
+
+      This product includes software developed at
+      The Apache Software Foundation (https://www.apache.org/).
+
+  (ASLv2) Apache POI (org.apache.poi:poi, poi-ooxml, poi-ooxml-full, poi-scratchpad)
+    The following NOTICE information applies:
+      Apache POI
+      Copyright The Apache Software Foundation
+
+      This product contains parts that were originally based on software from BEA.
+      This product contains W3C XML Schema documents. Copyright 2001-2003 (c)
+      World Wide Web Consortium (Massachusetts Institute of Technology, European
+      Research Consortium for Informatics and Mathematics, Keio University)
+      This product contains the Piccolo XML Parser for Java
+      (http://piccolo.sourceforge.net/). Copyright 2002 Yuval Oren.
+      This product contains the chunks_parse_cmds.tbl file from the vsdump program.
+      Copyright (C) 2006-2007 Valek Filippov (frob@df.ru)
+
+  (ASLv2) Apache XMLBeans (org.apache.xmlbeans:xmlbeans)
+    The following NOTICE information applies:
+      Apache XMLBeans
+      Copyright The Apache Software Foundation
+
+  (ASLv2) Apache PDFBox (org.apache.pdfbox:pdfbox, pdfbox-io, pdfbox-tools, fontbox,
+          xmpbox, jempbox, jbig2-imageio)
+    The following NOTICE information applies:
+      Apache PDFBox
+      Copyright The Apache Software Foundation
+
+      Based on source code originally developed in the PDFBox and FontBox projects.
+      Copyright (c) 2002-2007, www.pdfbox.org
+      Based on source code contributed to the original PDFBox project.
+      Copyright (c) 2006-2007, www.fontbox.org
+
+  (ASLv2) Apache Commons Compress (org.apache.commons:commons-compress)
+    The following NOTICE information applies:
+      Apache Commons Compress
+      Copyright The Apache Software Foundation
+
+  (ASLv2) Apache Commons IO (commons-io:commons-io)
+  (ASLv2) Apache Commons Lang (org.apache.commons:commons-lang3)
+  (ASLv2) Apache Commons Codec (commons-codec:commons-codec)
+  (ASLv2) Apache Commons Collections (org.apache.commons:commons-collections4)
+  (ASLv2) Apache Commons CSV (org.apache.commons:commons-csv)
+  (ASLv2) Apache Commons Exec (org.apache.commons:commons-exec)
+  (ASLv2) Apache Commons Math (org.apache.commons:commons-math3)
+    The following NOTICE information applies to each of the above:
+      Copyright The Apache Software Foundation
+
+      This product includes software developed at
+      The Apache Software Foundation (https://www.apache.org/).
+
+  (ASLv2) Apache HttpComponents (org.apache.httpcomponents:httpclient, httpcore, httpmime)
+    The following NOTICE information applies:
+      Apache HttpComponents
+      Copyright The Apache Software Foundation
+
+  (ASLv2) Apache James Mime4j (org.apache.james:apache-mime4j-core, apache-mime4j-dom)
+    The following NOTICE information applies:
+      Apache James Mime4j
+      Copyright The Apache Software Foundation
+
+  (ASLv2) Apache SIS (org.apache.sis.core:sis-utility, sis-metadata, sis-referencing,
+          sis-feature; org.apache.sis.storage:sis-storage, sis-netcdf)
+    The following NOTICE information applies:
+      Apache SIS
+      Copyright The Apache Software Foundation
+
+  (ASLv2) Apache Log4j API (org.apache.logging.log4j:log4j-api)
+    The following NOTICE information applies:
+      Apache Log4j
+      Copyright The Apache Software Foundation
+
+  (ASLv2) commons-archive (io.github.deepakdaneva.commons:commons-archive)
+      Copyright Deepak Kumar Jangir
+
+  (ASLv2) Jackson (com.fasterxml.jackson.core:jackson-core, jackson-databind, jackson-annotations)
+    The following NOTICE information applies:
+      Jackson is a high-performance JSON processor (parser, generator)
+      Jackson 2.x core and extension components are licensed under Apache License 2.0.
+
+  (ASLv2) Guava (com.google.guava:guava, failureaccess, listenablefuture)
+  (ASLv2) Error Prone Annotations (com.google.errorprone:error_prone_annotations)
+  (ASLv2) J2ObjC Annotations (com.google.j2objc:j2objc-annotations)
+  (ASLv2) JCommander (com.beust:jcommander)
+  (ASLv2) Joda-Time (joda-time:joda-time)
+    The following NOTICE information applies:
+      This product includes software developed by
+      Joda.org (https://www.joda.org/).
+  (ASLv2) Quartz Scheduler (org.quartz-scheduler:quartz)
+  (ASLv2) Java Native Access (net.java.dev.jna:jna)
+  (ASLv2) JJ2000 (edu.ucar:jj2000)
+  (ASLv2) metadata-extractor (com.drewnoakes:metadata-extractor)
+  (ASLv2) Parso (com.epam:parso)
+  (ASLv2) picocli (info.picocli:picocli)
+  (ASLv2) Jackcess (com.healthmarketscience.jackcess:jackcess, jackcess-encrypt)
+  (ASLv2) java-libpst (com.pff:java-libpst)
+  (ASLv2) ROME (com.rometools:rome, rome-utils)
+  (ASLv2) SparseBitSet (com.zaxxer:SparseBitSet)
+  (ASLv2) Vorbis Java (org.gagravarr:vorbis-java-core, vorbis-java-tika)
+  (ASLv2) jwarc (org.netpreserve:jwarc)
+  (ASLv2) SQLite JDBC (org.xerial:sqlite-jdbc)
+    The following NOTICE information applies:
+      This product includes the SQLite library, which is in the public domain.
+  (ASLv2) JCL 1.2 implemented over SLF4J (org.slf4j:jcl-over-slf4j)

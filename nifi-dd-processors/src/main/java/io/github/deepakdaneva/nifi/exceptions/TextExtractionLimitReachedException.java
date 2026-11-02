@@ -15,19 +15,34 @@ package io.github.deepakdaneva.nifi.exceptions;
 import org.apache.tika.exception.WriteLimitReachedException;
 
 /**
+ * Raised when a document holds more text than the configured characters or size limit. Extends Tika's
+ * {@link WriteLimitReachedException} so that Tika parsers propagate it instead of recording it as an embedded document
+ * failure.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 public class TextExtractionLimitReachedException extends WriteLimitReachedException {
 
+    private static final long serialVersionUID = 1L;
+
     private final String message;
 
+    /**
+     * Creates the exception for a characters limit.
+     *
+     * @param charsLimit characters limit that was reached.
+     */
     public TextExtractionLimitReachedException(final int charsLimit) {
         super(charsLimit);
         this.message = "Your document contained more than " + charsLimit + " characters, and so your requested limit has been reached. To receive the full text of the document, increase your limit. (Text up to the limit is however available).";
     }
 
+    /**
+     * Creates the exception for a size limit.
+     *
+     * @param sizeLimit size limit in bytes that was reached.
+     */
     public TextExtractionLimitReachedException(final long sizeLimit) {
         super(0);
         this.message = "Your document contained more than " + sizeLimit + " bytes, and so your requested limit has been reached. To receive the full text of the document, increase your limit. (Text up to the limit is however available).";

@@ -20,18 +20,18 @@ import org.apache.nifi.annotation.behavior.SupportsBatching;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
+import org.apache.nifi.components.resource.ResourceCardinality;
+import org.apache.nifi.components.resource.ResourceType;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.logging.ComponentLog;
-import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
@@ -39,91 +39,113 @@ import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
-import org.apache.tika.mime.MediaType;
-import org.apache.tika.mime.MimeType;
 import org.apache.tika.mime.MimeTypeException;
 import org.apache.tika.mime.MimeTypes;
 import org.apache.tika.mime.MimeTypesFactory;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
+ * Detects the MIME type of a FlowFile with Apache Tika.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 @SideEffectFree
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
-@Tags({DDCoreAttributes.DEEPAKDANEVA, DDCoreAttributes.MIME_TYPE, DDIdentifyMimeType.DD_MIME_EXTENSION, "compression", "gzip", "bzip2", "zip", "MIME", "file", "identify"})
-@CapabilityDescription("Attempts to identify the MIME Type of a given FlowFile. If the MIME Type can be identified, an attribute with the name '" + DDCoreAttributes.MIME_TYPE + "' is added with the value being the MIME Type. If the MIME Type cannot be determined, the value will be set to 'application/octet-stream'. In addition, the attribute '" + DDIdentifyMimeType.DD_MIME_EXTENSION + "' will be set if a common file extension for the MIME Type is known. If both Config File and Config Body are not set, the default NiFi MIME Types will be used. NOTE: This processor is backed by Apache Tika visit https://tika.apache.org to know more.")
-@WritesAttributes({@WritesAttribute(attribute = DDCoreAttributes.MIME_TYPE, description = "Detected MIME Type will be provided by this attribute."), @WritesAttribute(attribute = DDIdentifyMimeType.DD_MIME_EXTENSION, description = "Detected mime extension will be provided by this attribute."), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, description = DDCoreAttributes.DD_EXCEPTION_MESSAGE_DESC), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, description = DDCoreAttributes.DD_EXCEPTION_CLASS_DESC)})
-public class DDIdentifyMimeType extends AbstractProcessor {
+@Tags({DDCoreAttributes.DEEPAKDANEVA, DDCoreAttributes.MIME_TYPE, DDIdentifyMimeType.DD_MIME_EXTENSION, "compression", "gzip", "bzip2", "zip", "MIME", "file", "identify", "tika"})
+@CapabilityDescription("Attempts to identify the MIME type of a FlowFile from its content using Apache Tika. The '" + DDCoreAttributes.MIME_TYPE + "' attribute is set to the detected MIME type, or 'application/octet-stream' if it cannot be determined, and '" + DDIdentifyMimeType.DD_MIME_EXTENSION + "' is set to a common file extension for the MIME type when one is known. If neither a MIME config file nor body is set, Tika's default MIME types are used; " + "otherwise only the MIME types of the custom configuration (Tika mimetypes XML format) are used.")
+@WritesAttributes({@WritesAttribute(attribute = DDCoreAttributes.MIME_TYPE, description = "Detected MIME type."), @WritesAttribute(attribute = DDIdentifyMimeType.DD_MIME_EXTENSION, description = "Common file extension of the detected MIME type including the leading dot, or empty if unknown.")})
+@SeeAlso({DDExtractText.class, DDArchiveContainsFileType.class})
+public class DDIdentifyMimeType extends AbstractDDProcessor {
 
-    public static final PropertyDescriptor CLEAN_MIME_TYPE_ONLY = new PropertyDescriptor.Builder().name("Clean Mime Type Only").description("Sometimes when mime type is detected then other information in the mime type string is also included (e.g. 'application/x-rar-compressed; version=5'). If true then final mime type string will not include any other information (e.g. 'application/x-rar-compressed').").required(true).allowableValues("true", "false").defaultValue("true").build();
-
-    public static final PropertyDescriptor MIME_CONFIG_FILE = new PropertyDescriptor.Builder().name("Mime Config File").required(false).description("Path to MIME type config file. Only one of Config File or Config Body may be used.").addValidator(StandardValidators.NON_BLANK_VALIDATOR).addValidator(new StandardValidators.FileExistsValidator(true)).expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY).build();
-
-    public static final PropertyDescriptor MIME_CONFIG_BODY = new PropertyDescriptor.Builder().name("Mime Config Body").required(false).description("Body of MIME type config file. Only one of Config File or Config Body may be used.").addValidator(StandardValidators.NON_BLANK_VALIDATOR).expressionLanguageSupported(ExpressionLanguageScope.NONE).build();
+    /**
+     * Attribute holding the file extension of the detected MIME type.
+     */
     public static final String DD_MIME_EXTENSION = "mime.extension";
-    public static final String SEMICOLON = ";";
-    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("All FlowFiles are routed to success").build();
-    private Set<Relationship> relationships;
-    private List<PropertyDescriptor> properties;
-    private Detector detector;
-    private MimeTypes mimeTypes;
-    private boolean CLEAN_MIME_TYPE;
 
-    @Override
-    protected void init(final ProcessorInitializationContext context) {
-        properties = List.of(CLEAN_MIME_TYPE_ONLY, MIME_CONFIG_FILE, MIME_CONFIG_BODY);
-        relationships = Set.of(REL_SUCCESS);
-    }
+    /**
+     * Removes parameters from the detected MIME type.
+     */
+    public static final PropertyDescriptor CLEAN_MIME_TYPE_ONLY = new PropertyDescriptor.Builder().name("Clean Mime Type Only").description("Detected MIME types may carry parameters (e.g. 'application/x-rar-compressed; version=5'). If true, parameters are removed (e.g. 'application/x-rar-compressed').").required(true).allowableValues("true", "false").defaultValue("true").build();
 
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
-        String configBody = context.getProperty(MIME_CONFIG_BODY).getValue();
-        String configFile = context.getProperty(MIME_CONFIG_FILE).evaluateAttributeExpressions().getValue();
-        CLEAN_MIME_TYPE = context.getProperty(CLEAN_MIME_TYPE_ONLY).asBoolean();
-        if (configBody == null && configFile == null) {
-            TikaConfig tikaDefaultConfig = TikaConfig.getDefaultConfig();
-            detector = tikaDefaultConfig.getDetector();
-            mimeTypes = tikaDefaultConfig.getMimeRepository();
-        } else if (configBody != null) {
-            try {
-                detector = MimeTypesFactory.create(new ByteArrayInputStream(configBody.getBytes()));
-                mimeTypes = (MimeTypes) detector;
-            } catch (Exception e) {
-                context.yield();
-                throw new ProcessException("Failed to load mime config body", e);
-            }
-        } else {
-            try (final FileInputStream fis = new FileInputStream(configFile); final InputStream bis = new BufferedInputStream(fis)) {
-                detector = MimeTypesFactory.create(bis);
-                mimeTypes = (MimeTypes) detector;
-            } catch (Exception e) {
-                context.yield();
-                throw new ProcessException("Failed to load mime config file", e);
-            }
-        }
-    }
+    /**
+     * Custom MIME types file.
+     */
+    public static final PropertyDescriptor MIME_CONFIG_FILE = new PropertyDescriptor.Builder().name("Mime Config File").description("Path to a custom MIME types file (Tika mimetypes XML format). Only one of config file or config body may be set.").required(false).identifiesExternalResource(ResourceCardinality.SINGLE, ResourceType.FILE).expressionLanguageSupported(ExpressionLanguageScope.ENVIRONMENT).build();
+
+    /**
+     * Custom MIME types content.
+     */
+    public static final PropertyDescriptor MIME_CONFIG_BODY = new PropertyDescriptor.Builder().name("Mime Config Body").description("Content of a custom MIME types file (Tika mimetypes XML format). Only one of config file or config body may be set.").required(false).addValidator(StandardValidators.NON_BLANK_VALIDATOR).expressionLanguageSupported(ExpressionLanguageScope.NONE).build();
+
+    /**
+     * Relationship for all FlowFiles.
+     */
+    public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success").description("All FlowFiles are routed to success.").build();
+
+    private static final String GZIP = "application/gzip";
+    private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(CLEAN_MIME_TYPE_ONLY, MIME_CONFIG_FILE, MIME_CONFIG_BODY);
+    private static final Set<Relationship> RELATIONSHIPS = Set.of(REL_SUCCESS);
+
+    private volatile Detector detector;
+    private volatile MimeTypes mimeTypes;
+    private volatile boolean cleanMimeType;
 
     @Override
     public Set<Relationship> getRelationships() {
-        return relationships;
+        return RELATIONSHIPS;
     }
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return properties;
+        return PROPERTY_DESCRIPTORS;
+    }
+
+    /**
+     * Loads the MIME type configuration when the processor is scheduled.
+     *
+     * @param context process context.
+     */
+    @OnScheduled
+    public void onScheduled(final ProcessContext context) {
+        cleanMimeType = context.getProperty(CLEAN_MIME_TYPE_ONLY).asBoolean();
+        final String configBody = context.getProperty(MIME_CONFIG_BODY).getValue();
+        try {
+            if (configBody != null) {
+                mimeTypes = MimeTypesFactory.create(new ByteArrayInputStream(configBody.getBytes(StandardCharsets.UTF_8)));
+                detector = mimeTypes;
+            } else if (context.getProperty(MIME_CONFIG_FILE).isSet()) {
+                try (InputStream in = context.getProperty(MIME_CONFIG_FILE).evaluateAttributeExpressions().asResource().read()) {
+                    mimeTypes = MimeTypesFactory.create(in);
+                    detector = mimeTypes;
+                }
+            } else {
+                final TikaConfig config = TikaConfig.getDefaultConfig();
+                detector = config.getDetector();
+                mimeTypes = config.getMimeRepository();
+            }
+        } catch (final IOException | MimeTypeException e) {
+            throw new ProcessException("Failed to load MIME type configuration", e);
+        }
+    }
+
+    @Override
+    protected Collection<ValidationResult> customValidate(final ValidationContext validationContext) {
+        final List<ValidationResult> results = new ArrayList<>();
+        if (validationContext.getProperty(MIME_CONFIG_BODY).isSet() && validationContext.getProperty(MIME_CONFIG_FILE).isSet()) {
+            results.add(new ValidationResult.Builder().subject(MIME_CONFIG_FILE.getName()).valid(false).explanation("only one of '" + MIME_CONFIG_BODY.getName() + "' or '" + MIME_CONFIG_FILE.getName() + "' can be set").build());
+        }
+        return results;
     }
 
     @Override
@@ -133,52 +155,27 @@ public class DDIdentifyMimeType extends AbstractProcessor {
             return;
         }
 
-        final ComponentLog log = getLogger();
-        final AtomicReference<String> mimeTypeRef = new AtomicReference<>(null);
-
-        session.read(flowFile, stream -> {
-            try (final InputStream in = new BufferedInputStream(stream); final TikaInputStream tikaStream = TikaInputStream.get(in)) {
-                MediaType mediatype = detector.detect(tikaStream, new Metadata());
-                mimeTypeRef.set(mediatype.toString());
+        final String[] detected = new String[1];
+        session.read(flowFile, in -> {
+            try (TikaInputStream tikaStream = TikaInputStream.get(in)) {
+                detected[0] = detector.detect(tikaStream, new Metadata()).toString();
             }
         });
 
-        String mimeType = mimeTypeRef.get();
+        final String mimeType = detected[0] == null ? OCTET_STREAM : detected[0];
         String extension = "";
         try {
-            MimeType mimetype;
-            mimetype = mimeTypes.forName(mimeType);
-            extension = mimetype.getExtension();
-        } catch (MimeTypeException ex) {
-            log.warn("MIME type extension lookup failed: {}", ex);
+            extension = mimeTypes.forName(stripMimeParameters(mimeType)).getExtension();
+        } catch (final MimeTypeException e) {
+            getLogger().warn("MIME type extension lookup failed for {}", mimeType, e);
         }
-
-        // Workaround for bug in Tika - https://issues.apache.org/jira/browse/TIKA-1563
-        if (mimeType != null && mimeType.equals("application/gzip") && extension.equals(".tgz")) {
+        // Tika reports .tgz as the first extension of application/gzip (TIKA-1563)
+        if (GZIP.equals(stripMimeParameters(mimeType)) && ".tgz".equals(extension)) {
             extension = ".gz";
         }
 
-        if (mimeType == null) {
-            flowFile = session.putAttribute(flowFile, DDCoreAttributes.MIME_TYPE, "application/octet-stream");
-            flowFile = session.putAttribute(flowFile, DD_MIME_EXTENSION, "");
-            log.info("Unable to identify MIME Type for {}; setting to application/octet-stream", flowFile);
-        } else {
-            flowFile = session.putAttribute(flowFile, DDCoreAttributes.MIME_TYPE, CLEAN_MIME_TYPE ? mimeType.split(SEMICOLON)[0] : mimeType);
-            flowFile = session.putAttribute(flowFile, DD_MIME_EXTENSION, extension);
-        }
-
+        flowFile = session.putAllAttributes(flowFile, Map.of(DDCoreAttributes.MIME_TYPE, cleanMimeType ? stripMimeParameters(mimeType) : mimeType, DD_MIME_EXTENSION, extension));
         session.getProvenanceReporter().modifyAttributes(flowFile);
         session.transfer(flowFile, REL_SUCCESS);
-    }
-
-    @Override
-    protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
-        Set<ValidationResult> results = new HashSet<>();
-        String body = validationContext.getProperty(MIME_CONFIG_BODY).getValue();
-        String file = validationContext.getProperty(MIME_CONFIG_FILE).evaluateAttributeExpressions().getValue();
-        if (body != null && file != null) {
-            results.add(new ValidationResult.Builder().input(MIME_CONFIG_FILE.getName()).subject(file).valid(false).explanation("can only specify '" + MIME_CONFIG_BODY.getName() + "' or '" + MIME_CONFIG_FILE.getName() + "'. Not both.").build());
-        }
-        return results;
     }
 }

@@ -1,0 +1,54 @@
+# Publishes a -SNAPSHOT build to the Maven Central snapshot repository after every merge into development.
+# Credentials live in the "maven-snapshots" environment, which only the development branch may use.
+name: Snapshot
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish snapshot
+    runs-on: ubuntu-latest
+    environment: maven-snapshots
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Check the version is a snapshot
+        run: |
+          version=$(./mvnw -B -ntp -q help:evaluate -Dexpression=project.version -DforceStdout)
+          echo "Project version: $version"
+          case "$version" in
+            *-SNAPSHOT) ;;
+            *) echo "::error::development must carry a -SNAPSHOT version, found $version"; exit 1 ;;
+          esac
+      - name: Deploy snapshot
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$CENTRAL_USERNAME" ]; then
+            echo "::warning::Maven Central credentials are not configured in the maven-snapshots environment; skipping deploy."
+            exit 0
+          fi
+          ./mvnw -B -ntp -P publish deploy

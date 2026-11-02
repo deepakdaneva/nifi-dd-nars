@@ -13,11 +13,21 @@
 package io.github.deepakdaneva.nifi.exceptions;
 
 /**
+ * Raised when a document cannot be parsed because it is encrypted or password protected.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 public class EncryptedOrPasswordProtectedFileException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Creates the exception.
+     *
+     * @param message description of the problem.
+     * @param throwable underlying cause.
+     */
     public EncryptedOrPasswordProtectedFileException(final String message, final Throwable throwable) {
         super(message, throwable);
     }

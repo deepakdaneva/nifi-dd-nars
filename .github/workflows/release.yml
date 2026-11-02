@@ -1,0 +1,113 @@
+# Release flow on main (see CONTRIBUTING.md):
+# 1. Every push to main updates a release pull request that sets the next version (from Conventional
+#    Commits) in all pom.xml files and in CHANGELOG.md.
+# 2. Merging that pull request tags vX.Y.Z and creates the GitHub Release.
+# 3. The artifacts are published to Maven Central after a maintainer approves the "maven-central" environment.
+# 4. A pull request back into development carries the release and moves development to the next -SNAPSHOT.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # v* tags may only be created by a repository admin, and pull requests opened with GITHUB_TOKEN
+      # do not trigger CI, so release-please runs with a maintainer's fine-grained token.
+      - name: Check release token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::Add a RELEASE_TOKEN repository secret (see CONTRIBUTING.md, Release process)."
+            exit 1
+          fi
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    name: Publish to Maven Central
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    environment: maven-central
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Deploy release
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ./mvnw -B -ntp -P publish deploy
+
+  sync-development:
+    name: Sync release into development
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Open pull request with the next snapshot version
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          RELEASED: ${{ needs.release-please.outputs.version }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          IFS=. read -r major minor patch <<< "$RELEASED"
+          next="${major}.${minor}.$((patch + 1))-SNAPSHOT"
+          branch="release-sync/${TAG}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          ./mvnw -B -ntp -q versions:set -DnewVersion="$next" -DprocessAllModules -DgenerateBackupFiles=false
+          git commit -am "chore: prepare next development iteration ${next}"
+          git push origin "$branch"
+          gh pr create --base development --head "$branch" \
+            --title "chore: sync ${TAG} into development" \
+            --body "Brings release ${TAG} back into development and moves the version to ${next}. Merge with a merge commit."

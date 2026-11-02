@@ -13,11 +13,20 @@
 package io.github.deepakdaneva.nifi.exceptions;
 
 /**
+ * Raised when the cache entry identifier evaluates to a missing or blank value.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 public class NoOrBlankCacheIdentifierException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Creates the exception.
+     *
+     * @param message description of the problem.
+     */
     public NoOrBlankCacheIdentifierException(final String message) {
         super(message);
     }
