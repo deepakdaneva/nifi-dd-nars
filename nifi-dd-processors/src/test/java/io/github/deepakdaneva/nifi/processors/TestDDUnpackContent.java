@@ -12,6 +12,10 @@
  */
 package io.github.deepakdaneva.nifi.processors;
 
+import org.apache.commons.compress.compressors.gzip.GzipParameters;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import java.io.ByteArrayOutputStream;
 import io.github.deepakdaneva.nifi.DDTestConstants;
 import io.github.deepakdaneva.nifi.core.DDCoreAttributes;
 import io.github.deepakdaneva.nifi.core.DDCoreAttributes.DDFragmentAttributes;
@@ -240,5 +244,60 @@ class TestDDUnpackContent {
         final DDUnpackContent.EntryName name = DDUnpackContent.EntryName.of("/../", 3);
         assertEquals("unnamed-entry-3", name.fileName());
         assertEquals("/", name.path());
+    }
+
+    @Test
+    void plainGzipFileUsesParentNameWithoutSuffix() throws IOException {
+        enqueue(gzip(utf8("a,b;1,2"), null), "report.csv.gz");
+        runner.run();
+        runner.assertTransferCount(DDUnpackContent.REL_SUCCESS, 1);
+        runner.assertTransferCount(DDUnpackContent.REL_ORIGINAL, 1);
+        final MockFlowFile ff = runner.getFlowFilesForRelationship(DDUnpackContent.REL_SUCCESS).get(0);
+        ff.assertContentEquals("a,b;1,2");
+        ff.assertAttributeEquals(DDCoreAttributes.FILENAME, "report.csv");
+        ff.assertAttributeEquals(DDCoreAttributes.PATH, "/");
+    }
+
+    @Test
+    void plainGzipFilePrefersNameFromHeader() throws IOException {
+        enqueue(gzip(utf8("hello"), "original.txt"), "upload.gz");
+        runner.run();
+        runner.assertTransferCount(DDUnpackContent.REL_SUCCESS, 1);
+        runner.getFlowFilesForRelationship(DDUnpackContent.REL_SUCCESS).get(0).assertAttributeEquals(DDCoreAttributes.FILENAME, "original.txt");
+    }
+
+    @Test
+    void plainBzip2File() throws IOException {
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (BZip2CompressorOutputStream out = new BZip2CompressorOutputStream(bytes)) {
+            out.write(utf8("hello bzip2"));
+        }
+        enqueue(bytes.toByteArray(), "notes.txt.bz2");
+        runner.run();
+        runner.assertTransferCount(DDUnpackContent.REL_SUCCESS, 1);
+        final MockFlowFile ff = runner.getFlowFilesForRelationship(DDUnpackContent.REL_SUCCESS).get(0);
+        ff.assertContentEquals("hello bzip2");
+        ff.assertAttributeEquals(DDCoreAttributes.FILENAME, "notes.txt");
+    }
+
+    @Test
+    void withoutCompressionSuffix() {
+        assertEquals("report.csv", DDUnpackContent.withoutCompressionSuffix("report.csv.GZ"));
+        assertEquals("data", DDUnpackContent.withoutCompressionSuffix("data.xz"));
+        assertEquals(null, DDUnpackContent.withoutCompressionSuffix("archive.zip"));
+        assertEquals(null, DDUnpackContent.withoutCompressionSuffix(".gz"));
+        assertEquals(null, DDUnpackContent.withoutCompressionSuffix(null));
+    }
+
+    private static byte[] gzip(final byte[] content, final String nameInHeader) throws IOException {
+        final GzipParameters parameters = new GzipParameters();
+        if (nameInHeader != null) {
+            parameters.setFileName(nameInHeader);
+        }
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (GzipCompressorOutputStream out = new GzipCompressorOutputStream(bytes, parameters)) {
+            out.write(content);
+        }
+        return bytes.toByteArray();
     }
 }

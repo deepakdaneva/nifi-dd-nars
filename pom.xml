@@ -64,7 +64,7 @@
 
         <!-- Libraries bundled in the NAR -->
         <tika.version>3.3.3</tika.version>
-        <commons-archive.version>1.0.0</commons-archive.version>
+        <commons-archive.version>1.1.0</commons-archive.version>
         <commons-compress.version>1.28.0</commons-compress.version>
         <commons-io.version>2.22.0</commons-io.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>

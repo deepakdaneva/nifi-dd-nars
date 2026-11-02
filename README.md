@@ -111,7 +111,10 @@ streamed and bounded:
   sizes (zip bombs) cannot exceed it;
 - nesting is limited by *Maximum Sub Archive Depth*;
 - entry names are sanitized: `..`/`.` segments, leading separators and backslashes never reach the `filename` and
-  `path` attributes, so downstream processors such as `PutFile` cannot be steered outside their target directory.
+  `path` attributes, so downstream processors such as `PutFile` cannot be steered outside their target directory;
+- a single compressed file that is not a tarball (e.g. `report.csv.gz`, `notes.txt.bz2`, `data.xz`) produces one
+  FlowFile, named after the file name stored in the gzip header or, if there is none, after the parent file name
+  without its compression suffix (`report.csv`).
 
 | Property | Default | Description |
 |---|---|---|

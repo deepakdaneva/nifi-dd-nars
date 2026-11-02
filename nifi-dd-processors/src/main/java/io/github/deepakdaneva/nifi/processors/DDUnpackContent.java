@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -71,13 +72,14 @@ import java.util.UUID;
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({DDCoreAttributes.DEEPAKDANEVA, "Unpack", "un-merge", "tar", "zip", "archive", "7z", "recursive"})
-@CapabilityDescription("Unpacks an archive FlowFile, emitting one FlowFile per contained file to 'success' and the original FlowFile to 'original'. " + "Supported formats are those of Apache Commons Compress (zip, jar, tar, 7z, ar, arj, cpio, dump and tar compressed with gzip, bzip2, xz, lzma, brotli, zstd, ...); " + "MIME types are detected with Apache Tika. The total number of unpacked bytes is limited by 'Unpack Size Threshold', counting the actual bytes " + "written rather than the sizes declared by the archive, and nested archives are opened up to 'Maximum Sub Archive Depth'. " + "Entry names are sanitized: '..' and '.' segments, leading separators and backslashes are removed from the 'filename' and 'path' attributes.")
+@CapabilityDescription("Unpacks an archive FlowFile, emitting one FlowFile per contained file to 'success' and the original FlowFile to 'original'. " + "Supported formats are those of Apache Commons Compress (zip, jar, tar, 7z, ar, arj, cpio, dump tar compressed with gzip, bzip2, xz, lzma, brotli, zstd, ..., and single compressed files such as report.csv.gz, which produce one FlowFile named after the gzip header or, if none, the parent file name without its compression suffix); " + "MIME types are detected with Apache Tika. The total number of unpacked bytes is limited by 'Unpack Size Threshold', counting the actual bytes " + "written rather than the sizes declared by the archive, and nested archives are opened up to 'Maximum Sub Archive Depth'. " + "Entry names are sanitized: '..' and '.' segments, leading separators and backslashes are removed from the 'filename' and 'path' attributes.")
 @ReadsAttribute(attribute = DDCoreAttributes.FILENAME, description = "Used to populate '" + DDFragmentAttributes.SEGMENT_ORIGINAL_FILENAME + "' and '" + DDCoreAttributes.ABSOLUTE_PATH + "' of the unpacked FlowFiles.")
 @WritesAttributes({@WritesAttribute(attribute = DDCoreAttributes.MIME_TYPE, description = "On the original FlowFile: the detected MIME type. On unpacked FlowFiles: the detected MIME type when 'Unpack Recursively' is true, otherwise 'application/octet-stream'."), @WritesAttribute(attribute = DDCoreAttributes.FILENAME, description = "Unpacked FlowFiles: file name of the entry, without directories."), @WritesAttribute(attribute = DDCoreAttributes.PATH, description = "Unpacked FlowFiles: directory of the entry inside its archive, ending with '/', or '/' for top level entries."), @WritesAttribute(attribute = DDCoreAttributes.ABSOLUTE_PATH, description = "Unpacked FlowFiles: the original FlowFile's filename followed by '/' and the entry directory (without trailing '/')."), @WritesAttribute(attribute = DDFragmentAttributes.FRAGMENT_IDENTIFIER, description = "All unpacked FlowFiles produced from the same parent FlowFile, and the original FlowFile, share the same randomly generated UUID."), @WritesAttribute(attribute = DDFragmentAttributes.FRAGMENT_INDEX, description = "Unpacked FlowFiles: one-up number giving the order in which the entries were unpacked."), @WritesAttribute(attribute = DDFragmentAttributes.FRAGMENT_COUNT, description = "Number of unpacked FlowFiles generated from the parent FlowFile (also set on the original FlowFile)."), @WritesAttribute(attribute = DDFragmentAttributes.SEGMENT_ORIGINAL_FILENAME, description = "Unpacked FlowFiles: filename of the parent FlowFile."), @WritesAttribute(attribute = DDFragmentAttributes.SEGMENT_PATH, description = "Unpacked FlowFiles: same as 'path'."), @WritesAttribute(attribute = DDUnpackContent.FILE_LAST_MODIFIED_TIME_ATTRIBUTE, description = "Unpacked FlowFiles from tar archives: last modification time of the entry (yyyy-MM-dd'T'HH:mm:ssZ)."), @WritesAttribute(attribute = DDUnpackContent.FILE_CREATION_TIME_ATTRIBUTE, description = "Unpacked FlowFiles from tar archives: same value as file.lastModifiedTime."), @WritesAttribute(attribute = DDUnpackContent.FILE_OWNER_ATTRIBUTE, description = "Unpacked FlowFiles from tar archives: owner of the entry."), @WritesAttribute(attribute = DDUnpackContent.FILE_GROUP_ATTRIBUTE, description = "Unpacked FlowFiles from tar archives: group of the entry."), @WritesAttribute(attribute = DDUnpackContent.FILE_PERMISSIONS_ATTRIBUTE, description = "Unpacked FlowFiles from tar archives: permissions of the entry, e.g. rw-r--r--."), @WritesAttribute(attribute = DDUnpackContent.UNPACK_SIZE_THRESHOLD_BREACHED, description = "Original FlowFile: 'true' if the archive held more data than 'Unpack Size Threshold' allowed."), @WritesAttribute(attribute = DDUnpackContent.UNPACKED_BYTES_ATTRIBUTE, description = "Original FlowFile: total number of bytes unpacked."), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_MESSAGE_KEY, description = DDCoreAttributes.DD_EXCEPTION_MESSAGE_DESC), @WritesAttribute(attribute = DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, description = DDCoreAttributes.DD_EXCEPTION_CLASS_DESC)})
 @SystemResourceConsideration(resource = SystemResource.CPU, description = "When 'Unpack Recursively' is true every entry is inspected to detect its MIME type.")
 @SystemResourceConsideration(resource = SystemResource.MEMORY, description = "Unpacked FlowFiles are held in the session until the whole archive has been processed. 7z archives need random access and are buffered in memory.")
 @SeeAlso({DDArchiveContainsFileType.class, DDIdentifyMimeType.class})
 public class DDUnpackContent extends AbstractDDProcessor {
+    private static final List<String> COMPRESSION_SUFFIXES = List.of(".gzip", ".gz", ".bz2", ".bz", ".xz", ".lzma", ".lz4", ".zst", ".br", ".sz", ".z");
 
     /**
      * Last modification time of an unpacked entry.
@@ -364,9 +366,33 @@ public class DDUnpackContent extends AbstractDDProcessor {
         state.children.add(child);
     }
 
+    /**
+     * Derives the name of a single compressed file from the name of the file that contains it.
+     *
+     * @param fileName name of the compressed file, e.g. {@code report.csv.gz}.
+     * @return the name without its compression suffix ({@code report.csv}), or {@code null} if it has no known suffix.
+     */
+    static String withoutCompressionSuffix(final String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        final String lower = fileName.toLowerCase(Locale.ROOT);
+        for (final String suffix : COMPRESSION_SUFFIXES) {
+            if (lower.endsWith(suffix) && lower.length() > suffix.length()) {
+                return fileName.substring(0, fileName.length() - suffix.length());
+            }
+        }
+        return null;
+    }
+
     private static Map<String, String> entryAttributes(final UnpackState state, final ArchiveEntry entry, final String mimeType) {
-        final EntryName name = EntryName.of(entry.getName(), state.children.size() + 1);
         final String parentFileName = state.original.getAttribute(DDCoreAttributes.FILENAME);
+        String rawName = entry.getName();
+        if (rawName == null || rawName.isBlank()) {
+            // A plain compressed file (e.g. report.csv.gz) whose format stores no name: derive it from the parent.
+            rawName = withoutCompressionSuffix(parentFileName);
+        }
+        final EntryName name = EntryName.of(rawName, state.children.size() + 1);
         final Map<String, String> attributes = new HashMap<>();
         attributes.put(DDCoreAttributes.FILENAME, name.fileName());
         attributes.put(DDCoreAttributes.PATH, name.path());
