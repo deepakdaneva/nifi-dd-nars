@@ -55,6 +55,8 @@ import java.util.Set;
 
 /**
  * Detects the MIME type of a FlowFile with Apache Tika.
+ * <p>
+ * Portions of this class are adapted from Apache NiFi's {@code IdentifyMimeType} (Apache License 2.0).
  *
  * @author Deepak Kumar Jangir
  * @since 1.0.0

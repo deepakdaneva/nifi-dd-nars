@@ -61,6 +61,8 @@ import java.util.UUID;
 
 /**
  * Unpacks an archive FlowFile into one FlowFile per contained file, optionally descending into nested archives.
+ * <p>
+ * Portions of this class are adapted from Apache NiFi's {@code UnpackContent} (Apache License 2.0).
  *
  * @author Deepak Kumar Jangir
  * @since 1.0.0

@@ -5,6 +5,17 @@ This product includes software developed by Deepak Kumar Jangir
 (https://deepakdaneva.github.io), licensed under the Apache License,
 Version 2.0 (see LICENSE).
 
+This product includes software developed at
+The Apache Software Foundation (https://www.apache.org/).
+
+Apache NiFi
+Copyright 2014-2023 The Apache Software Foundation
+
+Portions of DDIdentifyMimeType and DDUnpackContent are adapted from Apache NiFi's
+org.apache.nifi.processors.standard.IdentifyMimeType and
+org.apache.nifi.processors.standard.UnpackContent, licensed under the Apache
+License, Version 2.0.
+
 The binary NAR built from this repository (nifi-dd-processors-nar) bundles
 third-party components, including software developed at The Apache Software
 Foundation (https://www.apache.org/). Their notices and licenses are listed in

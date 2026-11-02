@@ -6,6 +6,17 @@ This product includes software developed by Deepak Kumar Jangir
 Version 2.0. Third-party components bundled in this NAR, and the licenses
 under which they are distributed, are listed below and in META-INF/LICENSE.
 
+This product includes software developed at
+The Apache Software Foundation (https://www.apache.org/).
+
+Apache NiFi
+Copyright 2014-2023 The Apache Software Foundation
+
+Portions of DDIdentifyMimeType and DDUnpackContent are adapted from Apache NiFi's
+org.apache.nifi.processors.standard.IdentifyMimeType and
+org.apache.nifi.processors.standard.UnpackContent, licensed under the Apache
+License, Version 2.0.
+
 ******************
 Apache Software License v2
 ******************
