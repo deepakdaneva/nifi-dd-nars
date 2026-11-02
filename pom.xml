@@ -60,7 +60,7 @@
         <!-- Apache NiFi: the runtime these extensions are built and tested against -->
         <nifi.version>2.12.0</nifi.version>
         <!-- nifi-api has its own release train; keep it aligned with the version shipped by ${nifi.version} -->
-        <nifi-api.version>2.12.0</nifi-api.version>
+        <nifi-api.version>2.15.0</nifi-api.version>
 
         <!-- Libraries bundled in the NAR -->
         <tika.version>3.3.3</tika.version>
