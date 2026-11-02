@@ -13,13 +13,14 @@
 package io.github.deepakdaneva.nifi.core;
 
 /**
+ * Names and descriptions of the FlowFile attributes read or written by the processors of this bundle.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
-public class DDCoreAttributes {
+public final class DDCoreAttributes {
     /**
-     * Deepak Daneva
+     * Prefix of the attributes owned by this bundle; also used as a processor tag.
      */
     public static final String DEEPAKDANEVA = "deepakdaneva";
     /**
@@ -63,7 +64,18 @@ public class DDCoreAttributes {
      */
     public static final String DD_EXCEPTION_CLASS_DESC = "If any exception is thrown during processor execution then full exception class name will be provided through this attribute.";
 
-    public static class DDFragmentAttributes {
+    private DDCoreAttributes() {
+    }
+
+    /**
+     * Fragment attributes written when one FlowFile is split into several, compatible with the attributes of the same
+     * name written by Apache NiFi's own processors.
+     */
+    public static final class DDFragmentAttributes {
+
+        private DDFragmentAttributes() {
+        }
+
         /**
          * All split FlowFiles produced from the same parent FlowFile will have the same randomly generated UUID added for this attribute.
          */

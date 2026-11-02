@@ -12,41 +12,45 @@
  */
 package io.github.deepakdaneva.nifi.processors;
 
+import io.github.deepakdaneva.nifi.core.DDCoreAttributes;
+import io.github.deepakdaneva.nifi.exceptions.NoOrBlankCacheIdentifierException;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.distributed.cache.client.Deserializer;
 import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.distributed.cache.client.Serializer;
 import org.apache.nifi.reporting.InitializationException;
+import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * Tests for {@link DDRemoveDistributedMapCache}.
  */
-public class TestDDRemoveDistributedMapCache {
+class TestDDRemoveDistributedMapCache {
 
-    final String CACHE_KEY = "deepakdanevakey";
-    final String CACHE_VALUE = "deepakdanevavalue";
-    TestRunner runner;
-    MockCacheClient cache;
+    private static final String CACHE_KEY = "deepakdanevakey";
+    private static final String CACHE_VALUE = "deepakdanevavalue";
+
+    private TestRunner runner;
+    private MockCacheClient cache;
 
     @BeforeEach
-    public void putCacheKey() throws InitializationException, IOException {
+    void putCacheKey() throws InitializationException, IOException {
         runner = TestRunners.newTestRunner(new DDRemoveDistributedMapCache());
-        cache = new MockCacheClient(false);
-        Serializer<String> serializer = new DDRemoveDistributedMapCache.StringSerializer();
+        cache = new MockCacheClient();
+        final Serializer<String> serializer = new DDRemoveDistributedMapCache.StringSerializer();
         cache.put(CACHE_KEY, CACHE_VALUE, serializer, serializer);
         runner.addControllerService("cache", cache);
         runner.enableControllerService(cache);
@@ -54,21 +58,58 @@ public class TestDDRemoveDistributedMapCache {
     }
 
     @Test
-    public void test() {
+    void removesEntry() throws IOException {
         runner.setProperty(DDRemoveDistributedMapCache.CACHE_ENTRY_IDENTIFIER, CACHE_KEY);
         runner.enqueue(new byte[]{});
         runner.run();
         runner.assertAllFlowFilesTransferred(DDRemoveDistributedMapCache.REL_SUCCESS, 1);
-        runner.assertTransferCount(DDRemoveDistributedMapCache.REL_SUCCESS, 1);
+        assertFalse(cache.containsKey(CACHE_KEY, new DDRemoveDistributedMapCache.StringSerializer()));
     }
 
-    private static class MockCacheClient extends AbstractControllerService implements DistributedMapCacheClient {
-        private final ConcurrentMap<Object, Object> values = new ConcurrentHashMap<>();
-        private final boolean failOnCalls;
+    @Test
+    void identifierFromAttribute() {
+        runner.setProperty(DDRemoveDistributedMapCache.CACHE_ENTRY_IDENTIFIER, "${key}");
+        runner.enqueue(new byte[]{}, Map.of("key", CACHE_KEY));
+        runner.enqueue(new byte[]{}, Map.of("key", "missing"));
+        runner.run(2);
+        runner.assertTransferCount(DDRemoveDistributedMapCache.REL_SUCCESS, 1);
+        runner.assertTransferCount(DDRemoveDistributedMapCache.REL_NOT_FOUND, 1);
+    }
 
-        public MockCacheClient(final boolean failOnCalls) {
-            this.failOnCalls = failOnCalls;
-        }
+    @Test
+    void blankIdentifierFails() {
+        runner.setProperty(DDRemoveDistributedMapCache.CACHE_ENTRY_IDENTIFIER, "${missing}");
+        runner.enqueue(new byte[]{});
+        runner.run();
+        runner.assertAllFlowFilesTransferred(DDRemoveDistributedMapCache.REL_FAILURE, 1);
+        final MockFlowFile ff = runner.getFlowFilesForRelationship(DDRemoveDistributedMapCache.REL_FAILURE).get(0);
+        ff.assertAttributeEquals(DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, NoOrBlankCacheIdentifierException.class.getName());
+        assertTrue(ff.isPenalized());
+    }
+
+    @Test
+    void cacheErrorFails() {
+        cache.failOnCalls = true;
+        runner.setProperty(DDRemoveDistributedMapCache.CACHE_ENTRY_IDENTIFIER, CACHE_KEY);
+        runner.enqueue(new byte[]{});
+        runner.run();
+        runner.assertAllFlowFilesTransferred(DDRemoveDistributedMapCache.REL_FAILURE, 1);
+        final MockFlowFile ff = runner.getFlowFilesForRelationship(DDRemoveDistributedMapCache.REL_FAILURE).get(0);
+        ff.assertAttributeEquals(DDCoreAttributes.DD_EXCEPTION_CLASS_KEY, IOException.class.getName());
+        assertTrue(ff.isPenalized());
+    }
+
+    @Test
+    void identifierRequired() {
+        runner.assertNotValid();
+    }
+
+    /**
+     * In-memory cache keyed by the serialized key.
+     */
+    private static final class MockCacheClient extends AbstractControllerService implements DistributedMapCacheClient {
+        private final ConcurrentMap<String, Object> values = new ConcurrentHashMap<>();
+        private volatile boolean failOnCalls;
 
         private void verifyNotFail() throws IOException {
             if (failOnCalls) {
@@ -76,37 +117,42 @@ public class TestDDRemoveDistributedMapCache {
             }
         }
 
+        private static <K> String key(final K key, final Serializer<K> serializer) throws IOException {
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            serializer.serialize(key, out);
+            return out.toString(StandardCharsets.UTF_8);
+        }
+
         @Override
         public <K, V> boolean putIfAbsent(final K key, final V value, final Serializer<K> keySerializer, final Serializer<V> valueSerializer) throws IOException {
             verifyNotFail();
-            final Object retValue = values.putIfAbsent(key, value);
-            return (retValue == null);
+            return values.putIfAbsent(key(key, keySerializer), value) == null;
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public <K, V> V getAndPutIfAbsent(final K key, final V value, final Serializer<K> keySerializer, final Serializer<V> valueSerializer, final Deserializer<V> valueDeserializer) throws IOException {
             verifyNotFail();
-            return (V) values.putIfAbsent(key, value);
+            return (V) values.putIfAbsent(key(key, keySerializer), value);
         }
 
         @Override
         public <K> boolean containsKey(final K key, final Serializer<K> keySerializer) throws IOException {
             verifyNotFail();
-            return values.containsKey(key);
+            return values.containsKey(key(key, keySerializer));
         }
 
         @Override
         public <K, V> void put(final K key, final V value, final Serializer<K> keySerializer, final Serializer<V> valueSerializer) throws IOException {
             verifyNotFail();
-            values.put(key, value);
+            values.put(key(key, keySerializer), value);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public <K, V> V get(final K key, final Serializer<K> keySerializer, final Deserializer<V> valueDeserializer) throws IOException {
             verifyNotFail();
-            return (V) values.get(key);
+            return (V) values.get(key(key, keySerializer));
         }
 
         @Override
@@ -116,25 +162,7 @@ public class TestDDRemoveDistributedMapCache {
         @Override
         public <K> boolean remove(final K key, final Serializer<K> serializer) throws IOException {
             verifyNotFail();
-            values.remove(key);
-            return true;
-        }
-
-        @Override
-        public long removeByPattern(String regex) throws IOException {
-            verifyNotFail();
-            final List<Object> removedRecords = new ArrayList<>();
-            Pattern p = Pattern.compile(regex);
-            for (Object key : values.keySet()) {
-                // Key must be backed by something that can be converted into a String
-                Matcher m = p.matcher(key.toString());
-                if (m.matches()) {
-                    removedRecords.add(values.get(key));
-                }
-            }
-            final long numRemoved = removedRecords.size();
-            removedRecords.forEach(values::remove);
-            return numRemoved;
+            return values.remove(key(key, serializer)) != null;
         }
     }
 }

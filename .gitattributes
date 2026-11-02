@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+mvnw text eol=lf
+*.jar binary
+
+# Test fixtures without file extensions
+nifi-dd-processors/src/test/resources/testfiles/** binary

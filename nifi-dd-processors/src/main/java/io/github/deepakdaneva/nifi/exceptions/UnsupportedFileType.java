@@ -13,11 +13,21 @@
 package io.github.deepakdaneva.nifi.exceptions;
 
 /**
+ * Raised when no parser supports the type of the content.
+ *
  * @author Deepak Kumar Jangir
- * @version 1
- * @since 1
+ * @since 1.0.0
  */
 public class UnsupportedFileType extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Creates the exception.
+     *
+     * @param message description of the problem.
+     * @param throwable underlying cause.
+     */
     public UnsupportedFileType(String message, Throwable throwable) {
         super(message, throwable);
     }
