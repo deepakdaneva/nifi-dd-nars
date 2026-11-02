@@ -10,6 +10,15 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # Keep nifi-api aligned with the NiFi framework version (nifi.version); upgrade both together
+      - dependency-name: "org.apache.nifi:nifi-api"
+      # Tika 4 needs a dedicated migration
+      - dependency-name: "org.apache.tika:tika-bom"
+        update-types: ["version-update:semver-major"]
+      # The netCDF/GRIB parser's generated classes need the protobuf 3 API
+      - dependency-name: "com.google.protobuf:protobuf-java"
+        update-types: ["version-update:semver-major"]
     groups:
       maven-plugins:
         patterns: ["org.apache.maven.plugins:*", "*-maven-plugin"]
