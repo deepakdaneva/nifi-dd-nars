@@ -79,7 +79,7 @@
              (edu.ucar cdm/grib/httpservices 4.5.5); see the dependencyManagement section -->
         <cve.guava.version>33.7.2-jre</cve.guava.version>
         <!-- grib 4.5.5 ships protobuf 2.5 generated classes; 4.x removed the GeneratedMessage API they use -->
-        <cve.protobuf.version>3.25.9</cve.protobuf.version>
+        <cve.protobuf.version>4.36.2</cve.protobuf.version>
         <cve.quartz.version>2.5.2</cve.quartz.version>
         <cve.jcommander.version>1.82</cve.jcommander.version>
         <cve.httpclient.version>4.5.14</cve.httpclient.version>
