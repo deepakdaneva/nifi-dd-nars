@@ -11,6 +11,9 @@ updates:
       prefix: build
       include: scope
     ignore:
+      # Maven 3.10 breaks authenticated uploads to the Central snapshot repository; stay on 3.9.x
+      - dependency-name: "org.apache.maven:apache-maven"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
       # Keep nifi-api aligned with the NiFi framework version (nifi.version); upgrade both together
       - dependency-name: "org.apache.nifi:nifi-api"
       # Tika 4 needs a dedicated migration
