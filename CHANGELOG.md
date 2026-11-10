@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 Entries from the next release onwards are generated from Conventional Commits.
 
+## [2.0.1](https://github.com/deepakdaneva/nifi-dd-nars/compare/v2.0.0...v2.0.1) (2026-11-10)
+
+
+### Documentation
+
+* add README badges ([#18](https://github.com/deepakdaneva/nifi-dd-nars/issues/18)) ([61d682d](https://github.com/deepakdaneva/nifi-dd-nars/commit/61d682ddb10101cdd4bd9be24d7338a9abe5cf8a))
+
+
+### Build and Dependencies
+
+* **deps:** bump the maven-minor-and-patch group with 2 updates ([#17](https://github.com/deepakdaneva/nifi-dd-nars/issues/17)) ([4decdad](https://github.com/deepakdaneva/nifi-dd-nars/commit/4decdad618bf8ed7bdb9e98505a603649c7dfa7b))
+
 ## [2.0.0](https://github.com/deepakdaneva/nifi-dd-nars/compare/v1.0.0...v2.0.0) (2026-11-02)
 
 
