@@ -1,7 +1,13 @@
 # nifi-dd-nars
 
 [![CI](https://github.com/deepakdaneva/nifi-dd-nars/actions/workflows/ci.yml/badge.svg)](https://github.com/deepakdaneva/nifi-dd-nars/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/deepakdaneva/nifi-dd-nars/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/deepakdaneva/nifi-dd-nars/actions/workflows/github-code-scanning/codeql)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.deepakdaneva.nifi/nifi-dd-processors-nar?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.deepakdaneva.nifi/nifi-dd-processors-nar)
+[![javadoc](https://javadoc.io/badge2/io.github.deepakdaneva.nifi/nifi-dd-processors/javadoc.svg)](https://javadoc.io/doc/io.github.deepakdaneva.nifi/nifi-dd-processors)
+[![GitHub release](https://img.shields.io/github/v/release/deepakdaneva/nifi-dd-nars)](https://github.com/deepakdaneva/nifi-dd-nars/releases/latest)
+[![Java](https://img.shields.io/badge/Java-21%2B-orange)](#requirements)
+[![Apache NiFi](https://img.shields.io/badge/Apache%20NiFi-2.x-728e9b)](https://nifi.apache.org)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-fe5196)](https://conventionalcommits.org)
 [![License](https://img.shields.io/github/license/deepakdaneva/nifi-dd-nars)](LICENSE)
 
 Extension processors for [Apache NiFi](https://nifi.apache.org) 2.x: content-based MIME type detection, text
