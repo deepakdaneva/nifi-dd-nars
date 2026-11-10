@@ -76,7 +76,7 @@
 
         <!-- CVE overrides for old transitive dependencies of tika-parser-scientific-package
              (edu.ucar cdm/grib/httpservices 4.5.5); see the dependencyManagement section -->
-        <cve.guava.version>33.7.2-jre</cve.guava.version>
+        <cve.guava.version>33.8.0-jre</cve.guava.version>
         <!-- grib 4.5.5 ships protobuf 2.5 generated classes; 4.x removed the GeneratedMessage API they use -->
         <cve.protobuf.version>3.25.9</cve.protobuf.version>
         <cve.quartz.version>2.5.2</cve.quartz.version>
@@ -105,7 +105,7 @@
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <nifi-nar-maven-plugin.version>2.4.0</nifi-nar-maven-plugin.version>
-        <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>3.11.0</spotless-maven-plugin.version>
         <central-publishing-maven-plugin.version>0.12.0</central-publishing-maven-plugin.version>
 
         <!-- MANIFEST.MF entries -->
